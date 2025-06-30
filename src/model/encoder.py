@@ -104,3 +104,20 @@ print(patch_embeddings.shape)
 
 # avail_models = clip.available_models()
 
+
+#######################
+######           ######
+###### AJ UPDATE ######
+######           ######
+#######################
+
+# ====== Run Test Image Through CLIP Encoder ======
+
+# Process test image using CLIP processor for encoder
+processed_test_image_full = clip_processor(images=test_image, return_tensors="pt").to(device)
+
+# Run image through CLIP encoder to get embedding
+with torch.no_grad():
+    image_embed = clip_model.get_image_features(**processed_test_image_full)  # shape: (1, 512)
+
+print(image_embed.shape)  # torch.Size([1, 512])
