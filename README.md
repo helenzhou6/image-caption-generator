@@ -22,9 +22,9 @@ Inference:
 ![A6098B6E-7365-497E-A0B9-20E573ED6993](https://github.com/user-attachments/assets/7fa56d04-5c6c-4963-b960-1071c5cd63c2)
 
 1. Download the hugging face Flickr dataset
-2. Link it up with CLIP VIT Encoder (this already has positional encoding embedding and patching - 32pixel x 32pixel = 1 patch by default)
+2. Link it up with CLIP ViT Encoder (this already has positional encoding embedding and patching - 32pixel x 32pixel = 1 patch by default)
     - Might need to review: 3 colour channels
-    - Deal with sizing (photos are different sizes - max of both width and height 470pixel x 500pixel)
+    - Deal with sizing (photos are different sizes - max of both width and height 470pixel x 500pixel) 
 3. Extract one (out of 5) caption -> word2vec -> to vector
     - Also handling different lengths (train_datset max length 402 - test_datasest 342)
 4. Concat `<start token> + <vectors of patches> + <vectors of caption> + <end token>`
