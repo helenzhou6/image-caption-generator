@@ -34,7 +34,7 @@ with open("data/train_image_caption.pkl", "wb") as f:
 with open("data/val_image_5_captions.pkl", "wb") as f:
     pickle.dump(val_image_captions, f)
 
-
+# 
 
 # train_dataset.to_parquet("data/train.parquet", engine="pyarrow")
 

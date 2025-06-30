@@ -33,6 +33,7 @@ Inference:
 
 Bonus 1. Try pooling 5 captions for embeddings and test against single embedded caption
 Bonus 2. Create image-caption pairs for all 5 captions for a given image & re-train
+Bonus 3. Handle non square images, by including rectangle patches?  
 
 ## To load the saved training and validation datasets use the code below:
 
