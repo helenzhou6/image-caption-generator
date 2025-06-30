@@ -1,16 +1,39 @@
 from datasets import load_dataset
 import os
-import pandas as pd
+import pickle
 
 # Load the Flickr30k dataset
 dataset = load_dataset("nlphuji/flickr30k", split="test")
-pd_dataset = pd.DataFrame(dataset).head(100)
+train_dataset = dataset.filter(lambda x: x["split"] == "train")
+val_dataset = dataset.filter(lambda x: x["split"] == "val")
 
-train_dataset = pd_dataset[pd_dataset["split"] == "train"]
+# Extract image and first caption
+image_caption_pairs_train = [
+    {
+        "image": row["image"],               # PIL Image object
+        "caption": row["caption"][0]  # first caption string
+    }
+    for row in train_dataset
+]
+
+# Extract image and first caption
+val_image_captions = [
+    {
+        "image": row["image"],     # PIL Image object
+        "caption": row["caption"]  # first caption string
+    }
+    for row in val_dataset
+]
 
 os.makedirs("data", exist_ok=True)
 
-print(train_dataset.head())
+# Save to pickle file
+with open("data/train_image_caption.pkl", "wb") as f:
+    pickle.dump(image_caption_pairs_train, f)
+
+with open("data/val_image_5_captions.pkl", "wb") as f:
+    pickle.dump(val_image_captions, f)
+
 # train_dataset.to_parquet("data/train.parquet", engine="pyarrow")
 
 # sample = train_dataset[0]

@@ -26,7 +26,18 @@ Inference:
     - Might need to review: 3 colour channels
     - Deal with sizing (photos are different sizes - max of both width and height 470pixel x 500pixel)
 3. Extract one (out of 5) caption -> word2vec -> to vector
-    - Also handling different lengths 
+    - Also handling different lengths (train_datset max length 402 - test_datasest 342)
 4. Concat `<start token> + <vectors of patches> + <vectors of caption> + <end token>`
 5. Write the decoder! And feed in the above
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word)
+
+Bonus 1. Try pooling 5 captions for embeddings and test against single embedded caption
+Bonus 2. Create image-caption pairs for all 5 captions for a given image & re-train
+
+## To load the saved training and validation datasets use the code below:
+
+with open("train_dataset.pkl", "rb") as f:
+    train_dataset = pickle.load(f)
+
+with open("val_dataset.pkl", "rb") as f:
+    val_dataset = pickle.load(f)
