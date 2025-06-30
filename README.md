@@ -11,6 +11,7 @@ Aim: To take an image and generate a caption with **magic** (a.k.a a CLIP Visual
 1. To setup: `uv sync` so you will download all needed dependencies
     - To recognise imported files, you may need to run `export PYTHONPATH=./src` in the terminal
     - To run python file: either use `uv run <file name>` will auto use the .venv that uv generates OR you can do `source .venv/bin/activate` to activate your virtual env and then run `python3 <file name>`
+    - If you have VSCode on mac, you can do Shift, Command, P to open preferences, and select the .venv. Then you can press 'play' button and that will use it.
 
 
 ## Brainstorming session
