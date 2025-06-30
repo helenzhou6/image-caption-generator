@@ -6,6 +6,7 @@ Aim: To take an image and generate a caption with **magic** (a.k.a a CLIP Visual
 - Python 3.10
 - uv - install via https://github.com/astral-sh/uv
 - wandb log in details and be added to the project - https://wandb.ai/site
+- You may need to use computa CPU or an alternative if you have an old mac and it's complaining about torch 2.6 version
 
 ## To dev
 1. To setup: `uv sync` so you will download all needed dependencies
