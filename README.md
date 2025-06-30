@@ -21,9 +21,11 @@ MLX week 4.
 
 ### To Dos
 1. Download the hugging face Flickr dataset
-2. Link it up with CLIP VIT Encoder
-- Process the dataset: need to make it into patches. Also add positional encoding
-3. Work out caption -> word2vec -> to vector
-4. Concat <start token> + <vectors of patches> + <vectors of caption> + <end token>
+2. Link it up with CLIP VIT Encoder (this already has positional encoding embedding and patching - 32pixel x 32pixel = 1 patch by default)
+    - Might need to review: 3 colour channels
+    - Deal with sizing (photos are different sizes)
+3. Extract one (out of 5) caption -> word2vec -> to vector
+    - Also handling different lengths
+4. Concat `<start token> + <vectors of patches> + <vectors of caption> + <end token>`
 5. Write the decoder! And feed in the above
-6. Output logits: use the Cross Entropy loss function to train (compare it to the caption that has gone through vec2word)
+6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word)
