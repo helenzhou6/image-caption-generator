@@ -10,7 +10,7 @@ from PIL import Image
 
 device = get_device()
 
-clip_model = transformers.CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
+clip_model = transformers.CLIPVisionModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 params = lambda m: sum(p.numel() for p in m.parameters())
 
 print(f"CLIP model has {params(clip_model)} parameters.")
@@ -38,6 +38,8 @@ print(len(vocab)) # should be 49408 vocab
 with open("data/train_image_caption.pkl", "rb") as f:
     train_dataset = pickle.load(f)
 
+'''
+
 # TESTING PICKLE FILES LOAD IMAGES AND CAPTIONS 
 
 print(type(train_dataset))
@@ -51,6 +53,8 @@ print(train_dataset[1]["caption"])
 train_dataset[600]["image"].show()
 print(train_dataset[600]["caption"])
 
+'''
+
 # TEST IMAGE AND CAPTION EMBEDDING ON SINGLE IMAGE + CAPTION PAIR 
 
 test_image = train_dataset[600]["image"]
@@ -58,10 +62,10 @@ embedded_test_image = clip_processor(images=test_image, return_tensors="pt")["pi
 
 print(embedded_test_image)
 print(type(embedded_test_image)) # <class 'transformers.tokenization_utils_base.BatchEncoding'>
-print(embedded_test_image.shape)
+print(embedded_test_image.shape) # torch.Size([1, 3, 224, 224])
 
 
-# ====== Tensor Shape ======
+# ====== Embedded Image Tensor Shape ======
 # 
 # torch.Size([1, 3, 224, 224])
 #
@@ -72,11 +76,29 @@ print(embedded_test_image.shape)
 
 ####### IMAGE PATCH EMBEDDINGS #########
 
-patch_embeddings = clip_model.visual.embeddings.patch_embedding(embedded_test_image)
+patch_embeddings = clip_model.vision_model.embeddings.patch_embedding(embedded_test_image)
+print(patch_embeddings.shape) # torch.Size([1, 768, 7, 7])
 
 
+# ====== Embedded Patch Tensor Shape ======
+# 
+# torch.Size([1, 768, 7, 7])
+#
+# 1 = batch 
+# 768 = embedding dimension
+# 7 = number of patches vertically 
+# 7 = number of patches horizontally
 
+patch_embeddings = patch_embeddings.flatten(2).transpose(1,2)
+print(patch_embeddings.shape)
 
+# ====== Embedded Patch Tensor Shape ======
+# 
+# torch.Size([1, 768, 7, 7])
+#
+# 1 = batch 
+# 768 = embedding dimension per patch
+# 49 = number of patches
 
 # model, preprocess = clip.load("ViT-B/32", device=device)
 
