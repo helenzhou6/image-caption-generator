@@ -1,6 +1,9 @@
 import transformers
 from utils import get_device
 import clip
+import pickle
+import numpy as np
+from PIL import Image
 
 device = get_device()
 
@@ -23,11 +26,20 @@ vocab = tokenizer.get_vocab()
 print(type(vocab)) # should be class dict 
 print(len(vocab)) # should be 49408 vocab 
 
+with open("data/train_image_caption.pkl", "rb") as f:
+    train_dataset = pickle.load(f)
 
+# isinstance(train_dataset, Image.Image):
+print(type(train_dataset))
 
+train_dataset[0]["image"].show()
+print(train_dataset[0]["caption"])
 
+train_dataset[1]["image"].show()
+print(train_dataset[1]["caption"])
 
-
+train_dataset[600]["image"].show()
+print(train_dataset[600]["caption"])
 
 # model, preprocess = clip.load("ViT-B/32", device=device)
 
