@@ -54,11 +54,11 @@ print(train_dataset[600]["caption"])
 # TEST IMAGE AND CAPTION EMBEDDING ON SINGLE IMAGE + CAPTION PAIR 
 
 test_image = train_dataset[600]["image"]
-preprocessed_test_image = clip_processor(images=test_image, return_tensors="pt")["pixel_values"].to(device)
+embedded_test_image = clip_processor(images=test_image, return_tensors="pt")["pixel_values"].to(device)
 
-print(preprocessed_test_image)
-print(type(preprocessed_test_image)) # <class 'transformers.tokenization_utils_base.BatchEncoding'>
-print(preprocessed_test_image.shape)
+print(embedded_test_image)
+print(type(embedded_test_image)) # <class 'transformers.tokenization_utils_base.BatchEncoding'>
+print(embedded_test_image.shape)
 
 
 # ====== Tensor Shape ======
@@ -72,7 +72,7 @@ print(preprocessed_test_image.shape)
 
 ####### IMAGE PATCH EMBEDDINGS #########
 
-patch_embeddings = clip_model.visual.embeddings.patch_embedding(preprocessed_test_image)
+patch_embeddings = clip_model.visual.embeddings.patch_embedding(embedded_test_image)
 
 
 
