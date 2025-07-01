@@ -49,3 +49,4 @@ Inference:
 2. Create image-caption pairs for all 5 captions for a given image & re-train
 3. Handle non square images, by including rectangle patches? 
 4. Use Qwen text encoder/embedding 
+5. Use BLEU to evaluate generated captions

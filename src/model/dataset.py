@@ -13,12 +13,15 @@ train_dataset = dataset.filter(lambda x: x["split"] == "train")
 val_dataset = dataset.filter(lambda x: x["split"] == "val")
 
 # Extract image and first caption
+excluded_indices = {2607, 2916}
+
 image_caption_pairs_train = [
     {
-        "image": row["image"],               # PIL Image object
-        "caption": row["caption"][0]  # first caption string
+        "image": row["image"],
+        "caption": row["caption"][0]
     }
-    for row in train_dataset
+    for i, row in enumerate(train_dataset)
+    if i not in excluded_indices
 ]
 
 # Extract image and first caption
