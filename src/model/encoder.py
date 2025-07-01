@@ -169,5 +169,6 @@ for epoch in range(EPOCHS):
         # Here you would typically compute loss and backpropagate
         # For now, just print shapes
         if batch_idx == 0:
+            print("First batch of epoch:")
             print("Patch embeddings shape:", patch_embeddings.shape)  # Should be (BATCH_SIZE, 49, 768)
             print("Caption embeddings shape:", caption_embeddings.shape)  # Should be (BATCH_SIZE, seq_len, 512)
