@@ -11,10 +11,11 @@ import wandb
 
 BATCH_SIZE = 32
 EPOCHS = 1
-CAPTION_MAX_SEQ_LEN = 77
 EMBEDDING_DIM = 512
 NUM_HEADS = 8
 IMAGE_EMBEDDING_DIM = 768
+CAPTION_MAX_SEQ_LEN = 77
+NUM_LAYERS = 2
  
 device = get_device()
 
@@ -75,7 +76,7 @@ def collate_fn(batch):
 train_dataset = ImageDataset(train_dataset, clip_processor)
 dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
-class Decoder(nn.Module):
+class DecoderBlock(nn.Module):
     def __init__ (self, embed_dim, num_heads):
         super().__init__()
         # ingredients for the decoder
@@ -89,12 +90,12 @@ class Decoder(nn.Module):
         )
         # self.dropout = nn.Dropout(0.1)
 
-    def forward(self, x): 
+    def forward(self, x, attn_mask): 
     # recipe for the decoder
         # x: (B, T, D) - input embeddings
         x_res1 = x
         x = self.init_norm(x)
-        x, _ = self.masked_attn(x, x, x)
+        x, _ = self.masked_attn(x, x, x, attn_mask=attn_mask)
         x = x + x_res1
 
         x_res2 = x
@@ -105,13 +106,16 @@ class Decoder(nn.Module):
         return x # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension) output embeddings
 
 class Transformer(nn.Module):
-    def __init__(self, clip_model, decoder, embed_dim, num_heads, image_embedding_dim):
+    def __init__(self, clip_model, embed_dim, num_heads, image_embedding_dim, num_layers):
         super().__init__()
         self.clip_model = clip_model
-        self.decoder = decoder
         self.project_image_to_caption = nn.Linear(image_embedding_dim, embed_dim)
         self.start_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) # check this is right!!
         self.pos_embedding = nn.Embedding(CAPTION_MAX_SEQ_LEN, embed_dim)
+        self.decoder_blocks = nn.ModuleList([
+            DecoderBlock(embed_dim, num_heads)
+            for _ in range(num_layers)
+        ])
 
     def forward(self, batch):
         processed_test_image = batch["image"]
@@ -127,18 +131,19 @@ class Transformer(nn.Module):
             # -- Caption Embedding --
             # Create position ids (0, 1, 2, ..., T-1) for each sequence in the batch
             position_ids = torch.arange(caption_input_ids.size(1), device=device).unsqueeze(0)  # (1, T)
-            position_embeds = self.pos_embedding(position_ids)  # (1, T, D)
+            position_embeds = self.pos_embedding(position_ids)
             caption_token_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids) + position_embeds
-
+            batch_seq_length = caption_token_embeddings.size(1)
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
         # concatanate proj_img_emddings and caption embedddings 
         concatanated_triple = torch.cat([start_token, projected_image_embeddings, caption_token_embeddings], dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
-        # TODO: Add masking for the decoder
-        return self.decoder(concatanated_triple)
+        attn_mask = torch.triu(torch.ones((batch_seq_length, batch_seq_length), device=device), diagonal=1).bool()
+        for decoder_block in self.decoder_blocks:
+            x = decoder_block(concatanated_triple, attn_mask)
+        return x
 
 # Initialize the model with CLIP encoder and custom decoder
-decoder = Decoder(embed_dim=EMBEDDING_DIM, num_heads=NUM_HEADS).to(device)
-model = Transformer(clip_model, decoder, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM).to(device)
+model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
 
 for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
