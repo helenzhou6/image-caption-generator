@@ -1,6 +1,5 @@
 import transformers
 from utils import get_device
-import clip
 import pickle
 import numpy as np
 from PIL import Image
