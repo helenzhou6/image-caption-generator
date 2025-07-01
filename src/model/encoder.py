@@ -104,20 +104,15 @@ print(patch_embeddings.shape)
 
 # avail_models = clip.available_models()
 
-
-#######################
-######           ######
-###### AJ UPDATE ######
-######           ######
-#######################
-
-# ====== Run Test Image Through CLIP Encoder ======
+# ====== Run Test Image Through CLIP Encoder & Extract Final Hidden State ======
 
 # Process test image using CLIP processor for encoder
 processed_test_image_full = clip_processor(images=test_image, return_tensors="pt").to(device)
 
 # Run image through CLIP encoder to get embedding
 with torch.no_grad():
-    image_embed = clip_model.get_image_features(**processed_test_image_full)  # shape: (1, 512)
+    image_embed = clip_model.vision_model(**processed_test_image_full)  # shape: (1, 512)
+    patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
+    patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
 
-print(image_embed.shape)  # torch.Size([1, 512])
+print(patch_embeddings.shape)  # Should be (1, 49, 768)
