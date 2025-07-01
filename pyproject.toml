@@ -12,6 +12,7 @@ dependencies = [
     "pandas>=2.3.0",
     "pillow>=11.2.1",
     "torch==2.6",
+    "tqdm>=4.67.1",
     "transformers>=4.53.0",
     "wandb>=0.20.1",
 ]

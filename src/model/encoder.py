@@ -1,9 +1,16 @@
 import transformers
 from utils import get_device, load_artifact_path, init_wandb, get_device
+from torch.utils.data import Dataset
 import pickle
 import numpy as np
-from PIL import Image
+from PIL    import Image
 import torch
+from torch import nn
+from tqdm import tqdm
+
+BATCH_SIZE = 32
+EPOCHS = 1
+CAPTION_MAX_SEQ_LEN = 77
  
 # LOAD PICKLE FILE - wandb won't re-download the file if already exists
 init_wandb()
@@ -57,26 +64,105 @@ custom_image_processor.size = {"height": 512, "width": 512}  # force resize
 # You can now manually use this to process your images
 processed = custom_image_processor(images=test_image, return_tensors="pt").to(device)
 """
+# ----- TESTING ONE IMAGE -----
+# IMAGE_INDEX = 600
+# print(type(vocab)) # should be class dict 
+# print(len(vocab)) # should be 49408 vocab 
 
-print(type(vocab)) # should be class dict 
-print(len(vocab)) # should be 49408 vocab 
+# # Pick a random test image and caption from the dataset
+# test_image = train_dataset[IMAGE_INDEX]["image"]
+# test_caption = train_dataset[IMAGE_INDEX]["caption"]
 
-# Pick a random test image and caption from the dataset
-test_image = train_dataset[600]["image"]
-test_caption = train_dataset[600]["caption"]
+# # Process test image using CLIP processor for encoder
+# processed_test_image = clip_processor(images=test_image, return_tensors="pt").to(device)
+# processed_test_caption = clip_processor(text=[test_caption], return_tensors="pt").to(device)
 
-# Process test image using CLIP processor for encoder
-processed_test_image = clip_processor(images=test_image, return_tensors="pt").to(device)
-processed_test_caption = clip_processor(text=[test_caption], return_tensors="pt").to(device)
+# # Run image through CLIP encoder to get embedding
+# with torch.no_grad():
+#     image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
+#     patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
+#     patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
+#     text_outputs = clip_model.text_model(**processed_test_caption) # Last hidden state of the text encoder and pooled output (1, 512)
+#     caption_token_embeddings = text_outputs.last_hidden_state  # shape: (1, seq_len, 512)
 
-# Run image through CLIP encoder to get embedding
-with torch.no_grad():
-    image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
-    patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
-    patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
-    text_outputs = clip_model.text_model(**processed_test_caption) # Last hidden state of the text encoder and pooled output (1, 512)
-    caption_token_embeddings = text_outputs.last_hidden_state  # shape: (1, seq_len, 512)
+# print("Patch embeddings shape:", patch_embeddings.shape)  # Should be (1, 49, 768)
+# print("Caption tokenized length:", len(processed_test_caption["input_ids"][0]))  # Should be equal to seq_len
+# print("Caption embeddings shape:", caption_token_embeddings.shape)  # Should be (1, seq_len, 512)
 
-print("Patch embeddings shape:", patch_embeddings.shape)  # Should be (1, 49, 768)
-print("Caption tokenized length:", len(processed_test_caption["input_ids"][0]))  # Should be equal to seq_len
-print("Caption embeddings shape:", caption_token_embeddings.shape)  # Should be (1, seq_len, 512)
+# Dataset/Dataloader for training
+
+train_dataset = train_dataset[:10]
+class ImageDataset(Dataset):
+    def __init__(self, image_caption_pairs, processor):
+        self.image_caption_pairs = image_caption_pairs
+        self.processor = processor
+
+    def __len__(self):
+        return len(self.image_caption_pairs)
+
+    def __getitem__(self, idx):
+        item = self.image_caption_pairs[idx]
+        image = item["image"]
+        caption = item["caption"]
+
+        # Process image and caption
+        processed_image = self.processor(images=image, return_tensors="pt")["pixel_values"].to(device)
+        # Apparently the below handles the padding
+        tokenized_caption = self.processor(text=[caption], return_tensors="pt", padding="max_length", max_length=CAPTION_MAX_SEQ_LEN, truncation=True).to(device)
+
+        return {
+            "image": processed_image,
+            "caption": {
+                "input_ids": tokenized_caption["input_ids"].squeeze(0),  # (max_seq_len,)
+                "attention_mask": tokenized_caption["attention_mask"].squeeze(0)  # (max_seq_len,) attention_mask needed for model to know which are padding tokens and actual
+            }
+        }
+    
+def collate_fn(batch):
+    pixel_values = torch.stack([item["image"] for item in batch])  # (B, 3, 224, 224)
+    input_ids = torch.stack([item["caption"]["input_ids"] for item in batch])  # (B, max_seq_len)
+    attention_mask = torch.stack([item["caption"]["attention_mask"] for item in batch])  # (B, max_seq_len)
+
+    return {
+        "image": {"pixel_values": pixel_values},
+        "caption": {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask
+        }
+    }
+
+train_dataset = ImageDataset(train_dataset, clip_processor)
+dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
+
+class Transformer(nn.Module):
+    def __init__(self, clip_model):
+        super().__init__()
+        self.clip_model = clip_model
+
+    def forward(self, batch):
+        # TODO: Add positional embedding + projection image to same 512 dim as text, concat(start token etc)
+        processed_test_image = batch["image"]
+        processed_test_caption = batch["caption"]
+        # Run image through CLIP encoder to get embedding
+        with torch.no_grad():
+            image_embed = clip_model.vision_model(pixel_values=processed_test_image["pixel_values"]) # Last hidden state of the image encoder and pooled output (1, 512)
+            patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
+            patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
+            text_outputs = clip_model.text_model(**processed_test_caption) # Last hidden state of the text encoder and pooled output (1, 512)
+            caption_token_embeddings = text_outputs.last_hidden_state  # shape: (1, seq_len, 512)
+        return patch_embeddings, caption_token_embeddings
+
+
+model = Transformer(clip_model).to(device)
+
+for epoch in range(EPOCHS):
+    print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
+    for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
+        # Forward pass through the model
+        patch_embeddings, caption_embeddings = model.forward(batch)
+        
+        # Here you would typically compute loss and backpropagate
+        # For now, just print shapes
+        if batch_idx == 0:
+            print("Patch embeddings shape:", patch_embeddings.shape)  # Should be (BATCH_SIZE, 49, 768)
+            print("Caption embeddings shape:", caption_embeddings.shape)  # Should be (BATCH_SIZE, seq_len, 512)
