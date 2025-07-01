@@ -8,14 +8,12 @@ MLX week 4.
 - wandb log in details and be added to the project - https://wandb.ai/site or in remote terminal 
 - You may need to use computa CPU or an alternative if you have an old mac and it's complaining about torch 2.6 version
 
-## Remote instructions
+### Remote instructions
 1. Get your GPU and connect to it (either via VSCode SSH plugin or within the terminal)
-2. git clone the repo: `https://github.com/helenzhou6/image-caption-generator.git`
-3. To install eveything, run `chmod +x ./gpu-script.sh` and `./gpu-script.sh`
-4. Run any commands in `tmux` - i.e. run `tmux`! This will still run commands in the background even if you get kicked out (SSH connection fails)
+2. Export env variables needed `export WANDB_API_KEY="your_wandb_key" GITHUB_NAME="your_github_name" GITHUB_EMAIL="your_email@example.com"`
+3. To clone and install eveything, run `chmod +x ./gpu-script.sh` and `./gpu-script.sh`
+4. Run any commands in `tmux` (will have a green at the bottom) - i.e. run `tmux`! This will still run commands in the background even if you get kicked out (SSH connection fails)
     - To see all tmux sessions, run `tmux ls` and then run `tmux a -t <session name/number>` to go back to that session
-3. To log into wandb, in the terminal run `export WANDB_API_KEY=<key>` (get API key from wandb website)
-4. To commit, run e.g. `git config --global user.name "Helen"` (replace name!) and  e.g. `git config --global user.email "25727036+helenzhou6@users.noreply.github.com"` (replace email!)
 
 ## To dev
 1. To setup: `uv sync` so you will download all needed dependencies

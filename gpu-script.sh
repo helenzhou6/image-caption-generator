@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 
-#git clone https://github.com/ajamesl/MLX8-W3-VisionTransformer.git
+missing_vars=()
+
+# Check each required variable
+[[ -z "$WANDB_API_KEY" ]] && missing_vars+=("WANDB_API_KEY")
+[[ -z "$GITHUB_NAME" ]]   && missing_vars+=("GITHUB_NAME")
+[[ -z "$GITHUB_EMAIL" ]]  && missing_vars+=("GITHUB_EMAIL")
+
+if (( ${#missing_vars[@]} > 0 )); then
+    echo -e "\nThe following required environment variables are NOT set:"
+    for var in "${missing_vars[@]}"; do
+        echo "  - $var"
+    done
+    echo -e "\nPlease export them before proceeding.\n"
+    exit 1
+else
+    echo -e "\n✅ All required environment variables are set. Continuing...\n"
+fi
+
+git clone https://github.com/helenzhou6/image-caption-generator.git
 #cd MLX8-W2-DocumentSearch.git
 
 apt update
@@ -24,9 +42,9 @@ home_symbol = "~"
 EOF
 
 # duckdb
-curl https://install.duckdb.org | sh
-echo "export PATH='/root/.duckdb/cli/latest':\$PATH" >> ~/.bashrc
-source ~/.bashrc
+# curl https://install.duckdb.org | sh
+# echo "export PATH='/root/.duckdb/cli/latest':\$PATH" >> ~/.bashrc
+# source ~/.bashrc
 
 uv sync
 # activate virtual environment for running python scripts
@@ -36,3 +54,5 @@ echo "Run 'git lfs pull' to download large files."
 
 which python
 which uv
+
+tmux
