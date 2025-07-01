@@ -1,13 +1,17 @@
 import transformers
-from utils import get_device
+from utils import get_device, load_artifact_path, init_wandb, get_device
 import pickle
 import numpy as np
 from PIL import Image
+import torch
  
-# LOAD PICKLE FILE 
-
-with open("data/train_image_caption.pkl", "rb") as f:
+# LOAD PICKLE FILE - wandb won't re-download the file if already exists
+init_wandb()
+train_image_caption_path = load_artifact_path(artifact_name="train_image_caption", version="latest", file_extension='pkl')
+with open(train_image_caption_path, "rb") as f:
     train_dataset = pickle.load(f)
+
+device = get_device()
 
 '''
 
