@@ -94,7 +94,7 @@ processed = custom_image_processor(images=test_image, return_tensors="pt").to(de
 
 # Dataset/Dataloader for training
 
-# train_dataset = train_dataset[:10]
+train_dataset = train_dataset[:10]
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
         self.image_caption_pairs = image_caption_pairs
@@ -193,6 +193,8 @@ class Transformer(nn.Module):
     def forward(self, batch):
         processed_test_image = batch["image"]
         processed_test_caption = batch["caption"]
+        batch_size = processed_test_caption.get("input_ids").shape[0]  # Get batch size from input_ids
+        start_token = self.start_token.expand(batch_size, -1, -1)  # Expand start token to match batch size
         # Run image through CLIP encoder to get embedding
         with torch.no_grad():
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
@@ -202,10 +204,10 @@ class Transformer(nn.Module):
             caption_token_embeddings = text_outputs.last_hidden_state  # shape: (1, seq_len, 512)
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
         # concatanate proj_img_emddings and caption embedddings 
-        start_token = self.start_token # check this is right!!
+        concatanated_triple = torch.cat((start_token, projected_image_embeddings, caption_token_embeddings), dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
+        return concatanated_triple
 
 
-        
 # Initialize the model with CLIP encoder and custom decoder
         
 
@@ -216,11 +218,10 @@ for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
     for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
         # Forward pass through the model
-        patch_embeddings, caption_embeddings = model.forward(batch)
+        concatanated_triple = model.forward(batch)
         
         # Here you would typically compute loss and backpropagate
         # For now, just print shapes
         if batch_idx == 0:
             print("First batch of epoch:")
-            print("Patch embeddings shape:", patch_embeddings.shape)  # Should be (BATCH_SIZE, 49, 768)
-            print("Caption embeddings shape:", caption_embeddings.shape)  # Should be (BATCH_SIZE, seq_len, 512)
+            print("Concatenated triple shape:", concatanated_triple.shape)  # Should be (BATCH_SIZE, T, D)
