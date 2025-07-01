@@ -43,6 +43,18 @@ clip_processor = transformers.CLIPProcessor.from_pretrained("openai/clip-vit-bas
 tokenizer = clip_processor.tokenizer
 vocab = tokenizer.get_vocab()
 
+"""
+# CREATE CUSTOM IMAGE PROCESSOR TO RESIZE IMAGES TO 512x512
+
+custom_image_processor = CLIPImageProcessor.from_pretrained(
+    "openai/clip-vit-base-patch32",
+)
+custom_image_processor.size = {"height": 512, "width": 512}  # force resize
+
+# You can now manually use this to process your images
+processed = custom_image_processor(images=test_image, return_tensors="pt").to(device)
+"""
+
 print(type(vocab)) # should be class dict 
 print(len(vocab)) # should be 49408 vocab 
 
