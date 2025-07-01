@@ -5,7 +5,7 @@ MLX week 4.
 ## Pre-requisities 
 - Python 3.10
 - uv - install via https://github.com/astral-sh/uv
-- wandb log in details and be added to the project - https://wandb.ai/site
+- wandb log in details and be added to the project - https://wandb.ai/site or in remote terminal 
 - You may need to use computa CPU or an alternative if you have an old mac and it's complaining about torch 2.6 version
 
 ## To dev
