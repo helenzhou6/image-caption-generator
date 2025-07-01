@@ -36,4 +36,5 @@ Inference:
 ### Bonus 
 1. Try pooling 5 captions for embeddings and test against single embedded caption
 2. Create image-caption pairs for all 5 captions for a given image & re-train
-3. Handle non square images, by including rectangle patches?  
+3. Handle non square images, by including rectangle patches? 
+4. Use Qwen text encoder/embedding 
