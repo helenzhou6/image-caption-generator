@@ -45,10 +45,19 @@ Inference:
 
 Conceptual Questions
 1. Are the image encoder & text encoders pre-trained ?
+_YES_
+   
 2. Are they models (i.e .pth files like we would get after training a model) or layers (i.e classes that we would import/use from torch library? 
-3. What are they trained on?
-4. When we use them, they turn images or captions into vectors of specific dimensions (eg. 512 etc). Does this mean meaning is then 'baked into' the output from the model/layer? eg. the outputted vector contains not only the actual vectorised pixel info, but also the additional contextual meaning. So the output vector contains both a pixel map, which contains the vectorised values of each patch/pixel, plus 512 vectors which collectively say something about the what the image represents.  
-5. So what is the Decoder learning? What are the weights and biases really representing? i.e what is it learning, and what do we backpropogate it to train it to be more accurate.  
+_Models - we are loading the .pth, which is inside the CLIP transformer from the transformers library_
+
+4. What are they trained on?
+_400 million (image,text) pairs collected from public data by OpenAI, trained using contrastive loss function. _
+   
+6. When we use them, they turn images or captions into vectors of specific dimensions (eg. 768 etc). Does this mean that "meaning" is then 'baked into' the output from the model? eg. the outputted vector contains only contextual meaning about what the image represents
+
+_YES. The model maps the information from each image (patch) into a vector space of size embed_dim representing 'features' of the patches (e.g., 'redness', 'edgeness' in human terms). This mapping is a (lower) resolution equivalent to the original image (patch) attributes that a neural network can 'understand'. It contains the 'meaning' of the image (patches) and allows the model to assess similarity via a dot product (we humans can do this just by looking). _
+
+8. So what is the Decoder learning? What are the weights and biases really representing? i.e what is it learning, and what do we backpropogate it to train it to be more accurate.  
 
 ### Bonus 
 1. Try pooling 5 captions for embeddings and test against single embedded caption
