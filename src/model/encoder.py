@@ -110,18 +110,25 @@ class Transformer(nn.Module):
         self.decoder = Decoder(embed_dim, num_heads)
         self.project_image_to_caption = nn.Linear(image_embedding_dim, embed_dim)
         self.start_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) # check this is right!!
+        self.pos_embedding = nn.Embedding(CAPTION_MAX_SEQ_LEN, embed_dim)
 
     def forward(self, batch):
         processed_test_image = batch["image"]
         processed_test_caption = batch["caption"]
-        batch_size = processed_test_caption.get("input_ids").shape[0]  # Get batch size from input_ids
+        caption_input_ids = processed_test_caption.get("input_ids")  # shape: (B, T)
+        batch_size = caption_input_ids.shape[0]  # Get batch size from input_ids
         start_token = self.start_token.expand(batch_size, -1, -1)  # Expand start token to match batch size
         # Run image through CLIP encoder to get embedding
         with torch.no_grad():
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
-            caption_token_embeddings = clip_model.text_model.embeddings.token_embedding(processed_test_caption.get("input_ids"))
+            # -- Caption Embedding --
+            # Create position ids (0, 1, 2, ..., T-1) for each sequence in the batch
+            position_ids = torch.arange(caption_input_ids.size(1), device=device).unsqueeze(0)  # (1, T)
+            position_embeds = self.pos_embedding(position_ids)  # (1, T, D)
+            caption_token_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids) + position_embeds
+
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
         # concatanate proj_img_emddings and caption embedddings 
         concatanated_triple = torch.cat((start_token, projected_image_embeddings, caption_token_embeddings), dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
