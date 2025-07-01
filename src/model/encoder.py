@@ -115,6 +115,8 @@ class ImageDataset(Dataset):
         }
     
 def collate_fn(batch):
+    # Collate function to handle batching of images and captions by stacking batch of tensors into a single tensor
+    # Combines pixel_values, input_ids, attention_mask into a single batch (the correct batch for the model)
     pixel_values = torch.stack([item["image"]["pixel_values"].squeeze(0) for item in batch])  # (B, 3, 224, 224)
     input_ids = torch.nn.utils.rnn.pad_sequence(
         [item["caption"]["input_ids"].squeeze(0) for item in batch],
