@@ -106,7 +106,7 @@ class ImageDataset(Dataset):
         caption = item["caption"]
 
         # Process image and caption
-        processed_image = self.processor(images=image, return_tensors="pt")["pixel_values"].to(device)
+        processed_image = self.processor(images=image, return_tensors="pt").to(device)
         # Apparently the below handles the padding
         tokenized_caption = self.processor(text=[caption], return_tensors="pt", padding="max_length", max_length=CAPTION_MAX_SEQ_LEN, truncation=True).to(device)
 
@@ -145,7 +145,7 @@ class Transformer(nn.Module):
         processed_test_caption = batch["caption"]
         # Run image through CLIP encoder to get embedding
         with torch.no_grad():
-            image_embed = clip_model.vision_model(pixel_values=processed_test_image["pixel_values"]) # Last hidden state of the image encoder and pooled output (1, 512)
+            image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
             text_outputs = clip_model.text_model(**processed_test_caption) # Last hidden state of the text encoder and pooled output (1, 512)
