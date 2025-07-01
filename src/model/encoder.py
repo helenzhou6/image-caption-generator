@@ -111,6 +111,8 @@ class ImageDataset(Dataset):
         # Process image and caption
         processed_image = self.processor(images=image, return_tensors="pt").to(device)
         tokenized_caption = self.processor(text=[caption], return_tensors="pt").to(device)
+        input_ids = tokenized_caption["input_ids"]  # shape: (B, T)
+
 
         return {
             "image": processed_image,
@@ -126,17 +128,18 @@ def collate_fn(batch):
         batch_first=True,
         padding_value=0
     )
-    # attention_mask needed to tell model what token is padding vs actual
-    attention_mask = torch.nn.utils.rnn.pad_sequence(
-        [item["caption"]["attention_mask"].squeeze(0) for item in batch],
-        batch_first=True,
-        padding_value=0
-    )
+    # # attention_mask needed to tell model what token is padding vs actual
+    # attention_mask = torch.nn.utils.rnn.pad_sequence(
+    #     [item["caption"]["attention_mask"].squeeze(0) for item in batch],
+    #     batch_first=True,
+    #     padding_value=0
+    # )
+    # caption_input_ids_value = torch.stack([item["caption"]["input_ids"].squeeze(0) for item in batch])  # (B, 3, 224, 224)
+
     return {
         "image": {"pixel_values": pixel_values},
         "caption": {
             "input_ids": input_ids,
-            "attention_mask": attention_mask
         }
     }
 
@@ -200,8 +203,7 @@ class Transformer(nn.Module):
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
-            text_outputs = clip_model.text_model(**processed_test_caption) # Last hidden state of the text encoder and pooled output (1, 512)
-            caption_token_embeddings = text_outputs.last_hidden_state  # shape: (1, seq_len, 512)
+            caption_token_embeddings = clip_model.text_model.embeddings.token_embedding(processed_test_caption.get("input_ids"))
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
         # concatanate proj_img_emddings and caption embedddings 
         concatanated_triple = torch.cat((start_token, projected_image_embeddings, caption_token_embeddings), dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
