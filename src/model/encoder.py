@@ -114,7 +114,6 @@ class ImageDataset(Dataset):
             "caption": tokenized_caption
         }
     
-# TODO: Need to add padding of the seq_len to the max length in the batch
 def collate_fn(batch):
     pixel_values = torch.stack([item["image"]["pixel_values"].squeeze(0) for item in batch])  # (B, 3, 224, 224)
     input_ids = torch.nn.utils.rnn.pad_sequence(
@@ -145,7 +144,6 @@ class Transformer(nn.Module):
         self.clip_model = clip_model
 
     def forward(self, batch):
-        # TODO: Add positional embedding + projection image to same 512 dim as text, concat(start token etc)
         processed_test_image = batch["image"]
         processed_test_caption = batch["caption"]
         # Run image through CLIP encoder to get embedding

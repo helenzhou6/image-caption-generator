@@ -35,7 +35,11 @@ Inference:
     - Might need to review: 3 colour channels ✅
     - Deal with sizing (photos are different sizes - max of both width and height 470pixel x 500pixel) ✅
     - Understand the shape of patch_embeddings patch tensor ✅
-    - Change encoder so it takes in the whole dataset (create dataloader) ⬅️✨ NEXT STEP 
+    - Change encoder so it takes in the whole dataset (create dataloader) ✅ 
+    - Need to add padding to the caption embedding, to the max length in the batch ⬅️✨ NEXT STEP 
+    - Add positional embedding
+    - Project image to same 512 dim as text
+    - Concat (start token + visual embedding + text embedding + end token etc)
 3. Extract one (out of 5) caption -> word2vec -> to vector 
     - Also handling different lengths (train_datset max length 402 - test_datasest 342)
 4. Concat `<start token> + <vectors of patches> + <vectors of caption> + <end token>`
