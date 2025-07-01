@@ -42,6 +42,14 @@ Inference:
 5. Write the decoder! And feed in the above
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word)
 
+
+Conceptual Questions
+1. Are the image encoder & text encoders pre-trained ?
+2. Are they models (i.e .pth files like we would get after training a model) or layers (i.e classes that we would import/use from torch library? 
+3. What are they trained on?
+4. When we use them, they turn images or captions into vectors of specific dimensions (eg. 512 etc). Does this mean meaning is then 'baked into' the output from the model/layer? eg. the outputted vector contains not only the actual vectorised pixel info, but also the additional contextual meaning. So the output vector contains both a pixel map, which contains the vectorised values of each patch/pixel, plus 512 vectors which collectively say something about the what the image represents.  
+5. So what is the Decoder learning? What are the weights and biases really representing? i.e what is it learning, and what do we backpropogate it to train it to be more accurate.  
+
 ### Bonus 
 1. Try pooling 5 captions for embeddings and test against single embedded caption
 2. Create image-caption pairs for all 5 captions for a given image & re-train
