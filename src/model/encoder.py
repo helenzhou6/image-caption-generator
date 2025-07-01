@@ -7,6 +7,7 @@ from PIL    import Image
 import torch
 from torch import nn
 from tqdm import tqdm
+import wandb
 
 BATCH_SIZE = 32
 EPOCHS = 1
@@ -88,12 +89,12 @@ class Decoder(nn.Module):
         )
         # self.dropout = nn.Dropout(0.1)
 
-    def forward(self,x, mask): 
+    def forward(self, x): 
     # recipe for the decoder
         # x: (B, T, D) - input embeddings
         x_res1 = x
         x = self.init_norm(x)
-        x = self.masked_attn(x, x, x, mask=mask)
+        x, _ = self.masked_attn(x, x, x)
         x = x + x_res1
 
         x_res2 = x
@@ -104,10 +105,10 @@ class Decoder(nn.Module):
         return x # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension) output embeddings
 
 class Transformer(nn.Module):
-    def __init__(self, clip_model, embed_dim, num_heads, image_embedding_dim):
+    def __init__(self, clip_model, decoder, embed_dim, num_heads, image_embedding_dim):
         super().__init__()
         self.clip_model = clip_model
-        self.decoder = Decoder(embed_dim, num_heads)
+        self.decoder = decoder
         self.project_image_to_caption = nn.Linear(image_embedding_dim, embed_dim)
         self.start_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) # check this is right!!
         self.pos_embedding = nn.Embedding(CAPTION_MAX_SEQ_LEN, embed_dim)
@@ -131,20 +132,24 @@ class Transformer(nn.Module):
 
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
         # concatanate proj_img_emddings and caption embedddings 
-        concatanated_triple = torch.cat((start_token, projected_image_embeddings, caption_token_embeddings), dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
-        return concatanated_triple
+        concatanated_triple = torch.cat([start_token, projected_image_embeddings, caption_token_embeddings], dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
+        # TODO: Add masking for the decoder
+        return self.decoder(concatanated_triple)
 
 # Initialize the model with CLIP encoder and custom decoder
-model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM).to(device)
+decoder = Decoder(embed_dim=EMBEDDING_DIM, num_heads=NUM_HEADS).to(device)
+model = Transformer(clip_model, decoder, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM).to(device)
 
 for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
     for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
         # Forward pass through the model
-        concatanated_triple = model.forward(batch)
+        logits = model.forward(batch)
         
         # Here you would typically compute loss and backpropagate
         # For now, just print shapes
         if batch_idx == 0:
             print("First batch of epoch:")
-            print("Concatenated triple shape:", concatanated_triple.shape)  # Should be (BATCH_SIZE, T, D)
+            print("Decoder logits:", logits.shape)  # Should be (BATCH_SIZE, T, D)
+
+wandb.finish()  # Finish the wandb run

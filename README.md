@@ -40,10 +40,12 @@ Inference:
     - Add positional embedding ✅ 
     - Project image to same 512 dim as text ✅ 
     - Concat (start token + visual embedding + text embedding + end token etc) ✅ 
-3. Extract one (out of 5) caption -> word2vec -> to vector 
+3. Extract one (out of 5) caption -> word2vec -> to vector ✅
     - Also handling different lengths (train_datset max length 402 - test_datasest 342)
-4. Concat `<start token> + <vectors of patches> + <vectors of caption> + <end token>`
-5. Write the decoder! And feed in the above
+4. Concat `<start token> + <vectors of patches> + <vectors of caption> + <end token>` ✅
+5. Write the decoder! ✅
+    - Feed in the above ✅
+    - Add in mask to self attention
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word)
 
 
