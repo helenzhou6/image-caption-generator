@@ -91,7 +91,7 @@ processed = custom_image_processor(images=test_image, return_tensors="pt").to(de
 
 # Dataset/Dataloader for training
 
-train_dataset = train_dataset[:10]
+# train_dataset = train_dataset[:10]
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
         self.image_caption_pairs = image_caption_pairs
@@ -107,22 +107,27 @@ class ImageDataset(Dataset):
 
         # Process image and caption
         processed_image = self.processor(images=image, return_tensors="pt").to(device)
-        # Apparently the below handles the padding
-        tokenized_caption = self.processor(text=[caption], return_tensors="pt", padding="max_length", max_length=CAPTION_MAX_SEQ_LEN, truncation=True).to(device)
+        tokenized_caption = self.processor(text=[caption], return_tensors="pt").to(device)
 
         return {
             "image": processed_image,
-            "caption": {
-                "input_ids": tokenized_caption["input_ids"].squeeze(0),  # (max_seq_len,)
-                "attention_mask": tokenized_caption["attention_mask"].squeeze(0)  # (max_seq_len,) attention_mask needed for model to know which are padding tokens and actual
-            }
+            "caption": tokenized_caption
         }
     
+# TODO: Need to add padding of the seq_len to the max length in the batch
 def collate_fn(batch):
-    pixel_values = torch.stack([item["image"] for item in batch])  # (B, 3, 224, 224)
-    input_ids = torch.stack([item["caption"]["input_ids"] for item in batch])  # (B, max_seq_len)
-    attention_mask = torch.stack([item["caption"]["attention_mask"] for item in batch])  # (B, max_seq_len)
-
+    pixel_values = torch.stack([item["image"]["pixel_values"].squeeze(0) for item in batch])  # (B, 3, 224, 224)
+    input_ids = torch.nn.utils.rnn.pad_sequence(
+        [item["caption"]["input_ids"].squeeze(0) for item in batch],
+        batch_first=True,
+        padding_value=0
+    )
+    # attention_mask needed to tell model what token is padding vs actual
+    attention_mask = torch.nn.utils.rnn.pad_sequence(
+        [item["caption"]["attention_mask"].squeeze(0) for item in batch],
+        batch_first=True,
+        padding_value=0
+    )
     return {
         "image": {"pixel_values": pixel_values},
         "caption": {
