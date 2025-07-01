@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 data/
 wandb/
+artifacts/
 
 # C extensions
 *.so
