@@ -111,7 +111,9 @@ class Transformer(nn.Module):
         self.clip_model = clip_model
         self.project_image_to_caption = nn.Linear(image_embedding_dim, embed_dim)
         self.start_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) # check this is right!!
-        self.pos_embedding = nn.Embedding(CAPTION_MAX_SEQ_LEN, embed_dim)
+        self.pos_encoding = nn.Parameter(torch.rand(1, CAPTION_MAX_SEQ_LEN, embed_dim))
+        #nn.init.trunc_normal_(self.pos_encoding, std=0.02)
+
         self.decoder_blocks = nn.ModuleList([
             DecoderBlock(embed_dim, num_heads)
             for _ in range(num_layers)
@@ -128,18 +130,32 @@ class Transformer(nn.Module):
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
-            # -- Caption Embedding --
-            # Create position ids (0, 1, 2, ..., T-1) for each sequence in the batch
-            position_ids = torch.arange(caption_input_ids.size(1), device=device).unsqueeze(0)  # (1, T)
-            position_embeds = self.pos_embedding(position_ids)
-            caption_token_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids) + position_embeds
-            batch_seq_length = caption_token_embeddings.size(1)
+        # -- Caption Embedding --
+        # Create position ids (0, 1, 2, ..., T-1) for each sequence in the batch
+        # position_ids = torch.arange(caption_input_ids.size(1), device=device).unsqueeze(0)  # (1, T)
+        # position_embeds = self.pos_encoding(position_ids)
+
+        curr_seq_length = caption_input_ids.size(1)  # Get current sequence length
+        position_embeds = self.pos_encoding[:, :curr_seq_length, :].expand(batch_size, curr_seq_length, -1)
+        caption_token_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids) + position_embeds
+
+        #batch_seq_length = caption_token_embeddings.size(1)
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
-        # concatanate proj_img_emddings and caption embedddings 
-        concatanated_triple = torch.cat([start_token, projected_image_embeddings, caption_token_embeddings], dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
-        attn_mask = torch.triu(torch.ones((batch_seq_length, batch_seq_length), device=device), diagonal=1).bool()
+        # concatenate proj_img_emddings and caption embedddings 
+        concatenated_tokens = torch.cat([start_token, projected_image_embeddings, caption_token_embeddings], dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
+        B = caption_token_embeddings.size(0)
+        T = caption_token_embeddings.size(1)
+        I = 1 + projected_image_embeddings.size(1)  # start + 49 image tokens
+        total_seq_len = I + T
+
+        # Initialize full attention mask: allow everything
+        attn_mask = torch.zeros((total_seq_len, total_seq_len), device=device)
+        # Apply causal mask ONLY to the caption portion
+        caption_mask = torch.triu(torch.ones((T, T), device=device), diagonal=1).bool()
+        # Insert into the bottom-right T x T block of the full mask
+        attn_mask[I:, I:] = caption_mask  # mask future positions in captions
         for decoder_block in self.decoder_blocks:
-            x = decoder_block(concatanated_triple, attn_mask)
+            x = decoder_block(concatenated_tokens, attn_mask)
         return x
 
 # Initialize the model with CLIP encoder and custom decoder
