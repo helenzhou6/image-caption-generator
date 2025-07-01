@@ -94,7 +94,7 @@ print(patch_embeddings.shape)
 
 # ====== Embedded Patch Tensor Shape ======
 # 
-# torch.Size([1, 768, 7, 7])
+# torch.Size([1, 768, 49])
 #
 # 1 = batch 
 # 768 = embedding dimension per patch
