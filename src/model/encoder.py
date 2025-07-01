@@ -111,7 +111,9 @@ class Transformer(nn.Module):
         self.clip_model = clip_model
         self.project_image_to_caption = nn.Linear(image_embedding_dim, embed_dim)
         self.start_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) # check this is right!!
-        self.pos_encoding = nn.Parameter(torch.rand(1, CAPTION_MAX_SEQ_LEN, embed_dim))
+        self.pos_encoding = nn.Parameter(torch.zeros(1, CAPTION_MAX_SEQ_LEN, embed_dim))
+        nn.init.trunc_normal_(self.pos_encoding, std=0.02)
+
         #nn.init.trunc_normal_(self.pos_encoding, std=0.02)
 
         self.decoder_blocks = nn.ModuleList([
