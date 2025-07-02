@@ -182,8 +182,9 @@ loss_fn = nn.CrossEntropyLoss(ignore_index=padding_token_id)  # Ignore padding i
 
 for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
+    total_loss = 0.0
+    num_batches = 0
     for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
-        
         # add batch to device 
         batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
         batch["caption"]["input_ids"] = batch["caption"]["input_ids"].to(device)
@@ -212,8 +213,12 @@ for epoch in range(EPOCHS):
         loss.backward()
         optimizer.step()
 
-    epoch_loss = loss.item()
-    print(f"Epoch {epoch + 1} Loss: {epoch_loss:.4f}")
-    wandb.log({"epoch": epoch + 1, "loss": epoch_loss})
+        total_loss += loss.item()
+        num_batches += 1
+
+    # Compute average loss
+    avg_epoch_loss = total_loss / num_batches
+    print(f"Epoch {epoch + 1} Average Loss: {avg_epoch_loss:.4f}")
+    wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss})
 
 wandb.finish()  # Finish the wandb run
