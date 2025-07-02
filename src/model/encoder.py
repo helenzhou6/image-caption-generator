@@ -179,80 +179,86 @@ class Transformer(nn.Module):
 # Initialize the model with CLIP encoder and custom decoder
 model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
 
+
 padding_token_id = 0  # Our defined <|padding|> token ID
 end_token_id = 49407  # CLIP’s <|endoftext|> token ID
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
-loss_fn = nn.CrossEntropyLoss(ignore_index=padding_token_id)  # Ignore padding index
+def train():
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=padding_token_id)  # Ignore padding index
 
-for epoch in range(EPOCHS):
-    print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
-    total_loss = 0.0
-    num_batches = 0
-    sample_logged = False
-    for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
-        # add batch to device 
-        batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
-        batch["caption"]["input_ids"] = batch["caption"]["input_ids"].to(device)
-        
-        # Forward pass through the model
-        input_ids = batch["caption"]["input_ids"]  # (B, T)
-        B, T = input_ids.shape
+    for epoch in range(EPOCHS):
+        print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
+        total_loss = 0.0
+        num_batches = 0
+        sample_logged = False
+        for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
+            # add batch to device 
+            batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
+            batch["caption"]["input_ids"] = batch["caption"]["input_ids"].to(device)
+            
+            # Forward pass through the model
+            input_ids = batch["caption"]["input_ids"]  # (B, T)
+            B, T = input_ids.shape
 
-        # Remove the final token of the caption to create decoder input (y_input)
-        y_input = input_ids[:, :-1]  # shape: (B, T-1)
+            # Remove the final token of the caption to create decoder input (y_input)
+            y_input = input_ids[:, :-1]  # shape: (B, T-1)
 
-        # Removes the first token (start) - This is the target for the decoder, which is the input shifted by one position
-        y_target = input_ids[:, 1:]  # (B, T-1) - y_target is the same as y_input but shifted right by one position
+            # Removes the first token (start) - This is the target for the decoder, which is the input shifted by one position
+            y_target = input_ids[:, 1:]  # (B, T-1) - y_target is the same as y_input but shifted right by one position
 
-        # Replace the input_ids in batch with y_input
-        batch["caption"]["input_ids"] = y_input
+            # Replace the input_ids in batch with y_input
+            batch["caption"]["input_ids"] = y_input
 
-        # Forward pass
-        logits = model(batch)  # (B, T, V)
+            # Forward pass
+            logits = model(batch)  # (B, T, V)
 
-        # Reshape for loss: flatten logits and targets as (B*T, V) and (B*T, )
-        # This is necessary for CrossEntropyLoss which expects 2D inputs
-        loss = loss_fn(logits.reshape(-1, logits.size(-1)), y_target.reshape(-1))
+            # Reshape for loss: flatten logits and targets as (B*T, V) and (B*T, )
+            # This is necessary for CrossEntropyLoss which expects 2D inputs
+            loss = loss_fn(logits.reshape(-1, logits.size(-1)), y_target.reshape(-1))
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        total_loss += loss.item()
-        num_batches += 1
+            total_loss += loss.item()
+            num_batches += 1
 
-        # Decode and print prediction vs target for first sample in batch
-        predicted_ids = logits.argmax(dim=-1)  # (B, T-1)
-        pred_tokens = predicted_ids[0].tolist()
-        target_tokens = y_target[0].tolist()
+            # Decode and print prediction vs target for first sample in batch
+            predicted_ids = logits.argmax(dim=-1)  # (B, T-1)
+            pred_tokens = predicted_ids[0].tolist()
+            target_tokens = y_target[0].tolist()
 
-        pred_text = tokenizer.decode(pred_tokens, skip_special_tokens=True)
-        target_text = tokenizer.decode(target_tokens, skip_special_tokens=True)
+            pred_text = tokenizer.decode(pred_tokens, skip_special_tokens=True)
+            target_text = tokenizer.decode(target_tokens, skip_special_tokens=True)
 
-        print(f"\n[Epoch {epoch + 1} | Batch {batch_idx + 1}]")
-        print("Predicted caption: ", pred_text)
-        print("Target caption: ", target_text)
+            print(f"\n[Epoch {epoch + 1} | Batch {batch_idx + 1}]")
+            print("Predicted caption: ", pred_text)
+            print("Target caption: ", target_text)
 
 
-        # Optionally log to wandb
-        caption_table.add_data(
-            batch_idx + 1,
-            pred_text,
-            target_text
-        )
-        wandb.log({
-            "epoch": epoch + 1,
-            "batch": batch_idx + 1,
-            "batch_loss": loss.item(),
-            "captions": caption_table
-        })
+            # Optionally log to wandb
+            caption_table.add_data(
+                batch_idx + 1,
+                pred_text,
+                target_text
+            )
+            wandb.log({
+                "epoch": epoch + 1,
+                "batch": batch_idx + 1,
+                "batch_loss": loss.item(),
+                "captions": caption_table
+            })
 
-    # Compute average loss
-    avg_epoch_loss = total_loss / num_batches
-    print(f"Epoch {epoch + 1} Average Loss: {avg_epoch_loss:.4f}")
-    wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss})
+        # Compute average loss
+        avg_epoch_loss = total_loss / num_batches
+        print(f"Epoch {epoch + 1} Average Loss: {avg_epoch_loss:.4f}")
+        wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss})
 
-torch.save(model.state_dict(), 'data/model.pt')
-save_artifact('model', 'The trained model for image captioning')
-wandb.finish()  # Finish the wandb run
+    torch.save(model.state_dict(), 'data/model.pt')
+    save_artifact('model', 'The trained model for image captioning')
+
+# if __name__ == "__main__":
+    # train()  # Start training the model
+
+    # wandb.finish()  # Finish the wandb run
