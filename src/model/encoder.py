@@ -224,23 +224,24 @@ def train():
             total_loss += loss.item()
             num_batches += 1
 
-            # Decode and print prediction vs target for first sample in batch
-            predicted_ids = logits.argmax(dim=-1)  # (B, T-1)
-            pred_tokens = predicted_ids[0].tolist()
-            target_tokens = y_target[0].tolist()
+            # Only add to the caption table for the first 5 batches
+            if batch_idx < 5:
+                predicted_ids = logits.argmax(dim=-1)  # (B, T-1)
+                pred_tokens = predicted_ids[0].tolist()
+                target_tokens = y_target[0].tolist()
 
-            pred_text = tokenizer.decode(pred_tokens, skip_special_tokens=True)
-            target_text = tokenizer.decode(target_tokens, skip_special_tokens=True)
+                pred_text = tokenizer.decode(pred_tokens, skip_special_tokens=True)
+                target_text = tokenizer.decode(target_tokens, skip_special_tokens=True)
 
-            print(f"\n[Epoch {epoch + 1} | Batch {batch_idx + 1}]")
-            print("Predicted caption: ", pred_text)
-            print("Target caption: ", target_text)
+                print(f"\n[Epoch {epoch + 1} | Batch {batch_idx + 1}]")
+                print("Predicted caption: ", pred_text)
+                print("Target caption: ", target_text)
 
-            caption_table.add_data(
-                batch_idx + 1,
-                pred_text,
-                target_text
-            )
+                caption_table.add_data(
+                    batch_idx + 1,
+                    pred_text,
+                    target_text
+                )
 
         # Compute average loss
         avg_epoch_loss = total_loss / num_batches
