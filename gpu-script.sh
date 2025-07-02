@@ -18,6 +18,9 @@ else
     echo -e "\n✅ All required environment variables are set. Continuing...\n"
 fi
 
+git config --global user.name "$GITHUB_NAME"
+git config --global user.email "$GITHUB_EMAIL"
+
 # git clone https://github.com/helenzhou6/image-caption-generator.git
 #cd MLX8-W2-DocumentSearch.git
 
