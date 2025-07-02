@@ -51,7 +51,7 @@ Inference:
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word) ✅
 7. Evaluation - using validation dataset
     - Nice to have: during training, will output some text!
-    - Would be good to evaludate the model against CIDER (good for image captions). 
+    - Would be good to evaludate the model against CIDEr (good for image captions). 
         Will need to run `uv run pip install git+https://github.com/salaniz/pycocoevalcap.git` and ensure have `uv run pip install torch nltk numpy`
         Dummy code:
         ```python
