@@ -16,6 +16,7 @@ NUM_HEADS = 8
 IMAGE_EMBEDDING_DIM = 768
 CAPTION_MAX_SEQ_LEN = 86
 NUM_LAYERS = 2
+LEARNING_RATE = 1e-3
  
 device = get_device()
 
@@ -172,7 +173,7 @@ model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, N
 padding_token_id = 49408  # Our defined <|padding|> token ID
 end_token_id = 49407  # CLIP’s <|endoftext|> token ID
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 loss_fn = nn.CrossEntropyLoss(ignore_index=padding_token_id)  # Ignore padding index
 
 for epoch in range(EPOCHS):
@@ -201,8 +202,9 @@ for epoch in range(EPOCHS):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        
-    print("Epoch {} Loss: {:.4f}".format(epoch + 1, loss.item()))
 
+    epoch_loss = loss.item()
+    print(f"Epoch {epoch + 1} Loss: {epoch_loss:.4f}")
+    wandb.log({"epoch": epoch + 1, "loss": epoch_loss})
 
 wandb.finish()  # Finish the wandb run
