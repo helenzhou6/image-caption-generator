@@ -65,7 +65,7 @@ def collate_fn(batch):
     input_ids = torch.nn.utils.rnn.pad_sequence(
         [item["caption"]["input_ids"].squeeze(0) for item in batch],
         batch_first=True,
-        padding_value=49408
+        padding_value=0
     )
     return {
         "image": {"pixel_values": pixel_values},
@@ -167,10 +167,13 @@ class Transformer(nn.Module):
 
         return x
 
+
+
+
 # Initialize the model with CLIP encoder and custom decoder
 model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
 
-padding_token_id = 49408  # Our defined <|padding|> token ID
+padding_token_id = 0  # Our defined <|padding|> token ID
 end_token_id = 49407  # CLIP’s <|endoftext|> token ID
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
@@ -179,6 +182,11 @@ loss_fn = nn.CrossEntropyLoss(ignore_index=padding_token_id)  # Ignore padding i
 for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
     for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
+        
+        # add batch to device 
+        batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
+        batch["caption"]["input_ids"] = batch["caption"]["input_ids"].to(device)
+        
         # Forward pass through the model
         input_ids = batch["caption"]["input_ids"]  # (B, T)
         B, T = input_ids.shape
