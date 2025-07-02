@@ -110,9 +110,7 @@ class Transformer(nn.Module):
         super().__init__()
         self.clip_model = clip_model
         self.project_image_to_caption = nn.Linear(image_embedding_dim, embed_dim)
-        #self.start_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) # check this is right!!
         self.start_token_id = 49406  # CLIP’s <|startoftext|> token ID
-        # self.end_token_id = 49407  # CLIP’s <|endoftext|> token ID
         self.pos_encoding = nn.Parameter(torch.zeros(1, CAPTION_MAX_SEQ_LEN, embed_dim))
         nn.init.trunc_normal_(self.pos_encoding, std=0.02)
 
@@ -128,10 +126,8 @@ class Transformer(nn.Module):
         processed_test_caption = batch["caption"]
         caption_input_ids = processed_test_caption.get("input_ids")  # shape: (B, T)
         batch_size = caption_input_ids.shape[0]  # Get batch size from input_ids
-        #start_token = self.start_token.expand(batch_size, -1, -1)  # Expand start token to match batch size
         start_token_ids = torch.full((batch_size, 1), self.start_token_id, dtype=torch.long, device=device)
         start_token_embed = clip_model.text_model.embeddings.token_embedding(start_token_ids)  # (B, 1, D)
-
 
         # Run image through CLIP encoder to get embedding
         # everything going through torch.no_grad does not get learnt
@@ -140,21 +136,15 @@ class Transformer(nn.Module):
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
             text_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids)  # (B, T, D)
-        # -- Caption Embedding --
-        # Create position ids (0, 1, 2, ..., T-1) for each sequence in the batch
-        # position_ids = torch.arange(caption_input_ids.size(1), device=device).unsqueeze(0)  # (1, T)
-        # position_embeds = self.pos_encoding(position_ids)
 
         curr_seq_length = caption_input_ids.size(1)  # Get current sequence length
         position_embeds = self.pos_encoding[:, :curr_seq_length, :].expand(batch_size, curr_seq_length, -1)
         caption_token_embeddings = text_embeddings + position_embeds
 
-        #batch_seq_length = caption_token_embeddings.size(1)
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
         # concatenate proj_img_emddings and caption embedddings 
         concatenated_tokens = torch.cat([start_token_embed, projected_image_embeddings, caption_token_embeddings], dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
         # Set variables fo the batch and token sizes
-        B = caption_token_embeddings.size(0)
         T = caption_token_embeddings.size(1)
         I = 1 + projected_image_embeddings.size(1)  # start token + 49 image tokens
         total_seq_len = I + T
@@ -173,11 +163,19 @@ class Transformer(nn.Module):
 # Initialize the model with CLIP encoder and custom decoder
 model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
 
+end_token_id = 49407  # CLIP’s <|endoftext|> token ID
+end_token_embed = clip_model.text_model.embeddings.token_embedding(end_token_id)
+
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+loss_fn = nn.CrossEntropyLoss(ignore_index=0)  # Ignore padding index
+
 for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
     for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
         # Forward pass through the model
         logits = model.forward(batch)
+
+
         
         # Here you would typically compute loss and backpropagate
         # For now, just print shapes
