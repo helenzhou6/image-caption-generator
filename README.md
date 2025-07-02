@@ -51,6 +51,43 @@ Inference:
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word) ✅
 7. Evaluation - using validation dataset
     - Nice to have: during training, will output some text!
+    - Would be good to evaludate the model against CIDER (good for image captions). 
+        Will need to run `uv run pip install git+https://github.com/salaniz/pycocoevalcap.git` and ensure have `uv run pip install torch nltk numpy`
+        Dummy code:
+        ```python
+        from pycocoevalcap.cider.cider import CIDEr
+        def evaluate_cider(model, dataloader, tokenizer, references):
+            model.eval()
+            hypotheses = {}
+            
+            with torch.no_grad():
+                for batch_idx, batch in enumerate(dataloader):
+                    batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
+
+                    # Generate captions (greedy decoding example)
+                    outputs = model.generate(batch["image"]["pixel_values"], max_length=30)  # Adapt max_length to your task
+                    captions = [tokenizer.decode(ids, skip_special_tokens=True) for ids in outputs]
+
+                    # Assuming batch has image IDs accessible (or use batch_idx as ID)
+                    for i, caption in enumerate(captions):
+                        img_id = f"val_{batch_idx * dataloader.batch_size + i}"  # or your actual image ID
+                        hypotheses[img_id] = caption
+
+            model.train()
+
+            # Prepare references list for CIDEr
+            refs_list = [references[img_id] for img_id in hypotheses.keys()]
+            hyps_list = [hypotheses[img_id] for img_id in hypotheses.keys()]
+
+            cider_scorer = CIDEr()
+            score, _ = cider_scorer.compute_score(refs_list, hyps_list)
+            return score
+
+        # After your epoch training loop:
+        val_cider_score = evaluate_cider(model, val_dataloader, tokenizer, val_references)
+        print(f"Epoch {epoch + 1} CIDEr score on val set: {val_cider_score:.4f}")
+        wandb.log({"epoch": epoch + 1, "val_cider": val_cider_score})
+        ```
 8. Sweeps
 9. Inference
 
