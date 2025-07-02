@@ -33,7 +33,7 @@ tokenizer = clip_processor.tokenizer
 vocab = tokenizer.get_vocab()
 
 # Dataset/Dataloader for training
-train_dataset = train_dataset[:10]
+train_dataset = train_dataset[:100]
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
         self.image_caption_pairs = image_caption_pairs
@@ -64,7 +64,7 @@ def collate_fn(batch):
     input_ids = torch.nn.utils.rnn.pad_sequence(
         [item["caption"]["input_ids"].squeeze(0) for item in batch],
         batch_first=True,
-        padding_value=0
+        padding_value=49408
     )
     return {
         "image": {"pixel_values": pixel_values},
@@ -114,12 +114,14 @@ class Transformer(nn.Module):
         self.pos_encoding = nn.Parameter(torch.zeros(1, CAPTION_MAX_SEQ_LEN, embed_dim))
         nn.init.trunc_normal_(self.pos_encoding, std=0.02)
 
-        #nn.init.trunc_normal_(self.pos_encoding, std=0.02)
 
         self.decoder_blocks = nn.ModuleList([
             DecoderBlock(embed_dim, num_heads)
             for _ in range(num_layers)
         ])
+
+        # NEW: Final projection to vocab size
+        self.vocab_projection = nn.Linear(embed_dim, clip_model.config.text_config.vocab_size)
 
     def forward(self, batch):
         processed_test_image = batch["image"]
@@ -158,29 +160,56 @@ class Transformer(nn.Module):
 
         for decoder_block in self.decoder_blocks:
             x = decoder_block(concatenated_tokens, attn_mask)
+        
+        # Project decoder outputs to vocab logits
+        x = self.vocab_projection(x[:, -T:, :])  # (B, T, V)
+
         return x
 
 # Initialize the model with CLIP encoder and custom decoder
 model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
 
+padding_token_id = 49408  # Our defined <|padding|> token ID
 end_token_id = 49407  # CLIP’s <|endoftext|> token ID
-end_token_embed = clip_model.text_model.embeddings.token_embedding(end_token_id)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
-loss_fn = nn.CrossEntropyLoss(ignore_index=0)  # Ignore padding index
+loss_fn = nn.CrossEntropyLoss(ignore_index=padding_token_id)  # Ignore padding index
 
 for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
     for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
         # Forward pass through the model
-        logits = model.forward(batch)
+        input_ids = batch["caption"]["input_ids"]  # (B, T)
+        B, T = input_ids.shape
 
+        # Remove the final token of the caption to create decoder input (y_input)
+        y_input = input_ids[:, :-1]  # shape: (B, T-1)
 
+        # Create target by removing the first token (start) and including the last token of the caption
+        # This is the target for the decoder, which is the input shifted by one position
+        # y_target is the same as y_input but shifted right by one position
+        y_target = input_ids[:, 1:]  # (B, T-1)
+
+        # Replace the input_ids in batch with y_input
+        batch["caption"]["input_ids"] = y_input
+
+        # Forward pass
+        logits = model(batch)  # (B, T, V)
+
+        # Reshape for loss: flatten logits and targets as (B*T, V) and (B*T, )
+        # This is necessary for CrossEntropyLoss which expects 2D inputs
+        loss = loss_fn(logits.reshape(-1, logits.size(-1)), y_target.reshape(-1))
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
         
         # Here you would typically compute loss and backpropagate
         # For now, just print shapes
         if batch_idx == 0:
             print("First batch of epoch:")
-            print("Decoder logits:", logits.shape)  # Should be (BATCH_SIZE, T, D)
+            print("Decoder logits:", logits.shape)  # Should be (BATCH_SIZE, T, V)
+            print("Loss:", loss.item())
+
 
 wandb.finish()  # Finish the wandb run
