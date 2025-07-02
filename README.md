@@ -51,7 +51,33 @@ Inference:
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word) ✅
 7. Evaluation - using validation dataset
     - Nice to have: during training, will output some text!
-    - Would be good to evaludate the model against CIDEr (good for image captions). 
+8. Sweeps
+9. Inference
+
+
+Conceptual Questions
+1. Are the image encoder & text encoders pre-trained ?
+_YES_
+   
+2. Are they models (i.e .pth files like we would get after training a model) or layers (i.e classes that we would import/use from torch library? 
+_Models - we are loading the .pth, which is inside the CLIP transformer from the transformers library_
+
+4. What are they trained on?
+_400 million (image,text) pairs collected from public data by OpenAI, trained using contrastive loss function. _
+   
+6. When we use them, they turn images or captions into vectors of specific dimensions (eg. 768 etc). Does this mean that "meaning" is then 'baked into' the output from the model? eg. the outputted vector contains only contextual meaning about what the image represents
+
+_YES. The model maps the information from each image (patch) into a vector space of size embed_dim representing 'features' of the patches (e.g., 'redness', 'edgeness' in human terms). This mapping is a (lower) resolution equivalent to the original image (patch) attributes that a neural network can 'understand'. It contains the 'meaning' of the image (patches) and allows the model to assess similarity via a dot product (we humans can do this just by looking). _
+
+8. So what is the Decoder learning? What are the weights and biases really representing? i.e what is it learning, and what do we backpropogate it to train it to be more accurate.  
+
+### Bonus 
+1. Try pooling 5 captions for embeddings and test against single embedded caption
+2. Create image-caption pairs for all 5 captions for a given image & re-train
+3. Handle non square images, by including rectangle patches? 
+4. Use Qwen text encoder/embedding 
+5. Use BLEU to evaluate generated captions, or use CIDEr
+- Would be good to evalidate the model against CIDEr (good for image captions). 
         Will need to run `uv run pip install git+https://github.com/salaniz/pycocoevalcap.git` and ensure have `uv run pip install torch nltk numpy`
         Dummy code:
         ```python
@@ -88,29 +114,3 @@ Inference:
         print(f"Epoch {epoch + 1} CIDEr score on val set: {val_cider_score:.4f}")
         wandb.log({"epoch": epoch + 1, "val_cider": val_cider_score})
         ```
-8. Sweeps
-9. Inference
-
-
-Conceptual Questions
-1. Are the image encoder & text encoders pre-trained ?
-_YES_
-   
-2. Are they models (i.e .pth files like we would get after training a model) or layers (i.e classes that we would import/use from torch library? 
-_Models - we are loading the .pth, which is inside the CLIP transformer from the transformers library_
-
-4. What are they trained on?
-_400 million (image,text) pairs collected from public data by OpenAI, trained using contrastive loss function. _
-   
-6. When we use them, they turn images or captions into vectors of specific dimensions (eg. 768 etc). Does this mean that "meaning" is then 'baked into' the output from the model? eg. the outputted vector contains only contextual meaning about what the image represents
-
-_YES. The model maps the information from each image (patch) into a vector space of size embed_dim representing 'features' of the patches (e.g., 'redness', 'edgeness' in human terms). This mapping is a (lower) resolution equivalent to the original image (patch) attributes that a neural network can 'understand'. It contains the 'meaning' of the image (patches) and allows the model to assess similarity via a dot product (we humans can do this just by looking). _
-
-8. So what is the Decoder learning? What are the weights and biases really representing? i.e what is it learning, and what do we backpropogate it to train it to be more accurate.  
-
-### Bonus 
-1. Try pooling 5 captions for embeddings and test against single embedded caption
-2. Create image-caption pairs for all 5 captions for a given image & re-train
-3. Handle non square images, by including rectangle patches? 
-4. Use Qwen text encoder/embedding 
-5. Use BLEU to evaluate generated captions
