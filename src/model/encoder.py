@@ -10,11 +10,11 @@ from tqdm import tqdm
 import wandb
 
 BATCH_SIZE = 32
-EPOCHS = 1
+EPOCHS = 10
 EMBEDDING_DIM = 512
 NUM_HEADS = 8
 IMAGE_EMBEDDING_DIM = 768
-CAPTION_MAX_SEQ_LEN = 77
+CAPTION_MAX_SEQ_LEN = 86
 NUM_LAYERS = 2
  
 device = get_device()
@@ -185,10 +185,8 @@ for epoch in range(EPOCHS):
         # Remove the final token of the caption to create decoder input (y_input)
         y_input = input_ids[:, :-1]  # shape: (B, T-1)
 
-        # Create target by removing the first token (start) and including the last token of the caption
-        # This is the target for the decoder, which is the input shifted by one position
-        # y_target is the same as y_input but shifted right by one position
-        y_target = input_ids[:, 1:]  # (B, T-1)
+        # Removes the first token (start) - This is the target for the decoder, which is the input shifted by one position
+        y_target = input_ids[:, 1:]  # (B, T-1) - y_target is the same as y_input but shifted right by one position
 
         # Replace the input_ids in batch with y_input
         batch["caption"]["input_ids"] = y_input
@@ -204,12 +202,7 @@ for epoch in range(EPOCHS):
         loss.backward()
         optimizer.step()
         
-        # Here you would typically compute loss and backpropagate
-        # For now, just print shapes
-        if batch_idx == 0:
-            print("First batch of epoch:")
-            print("Decoder logits:", logits.shape)  # Should be (BATCH_SIZE, T, V)
-            print("Loss:", loss.item())
+    print("Epoch {} Loss: {:.4f}".format(epoch + 1, loss.item()))
 
 
 wandb.finish()  # Finish the wandb run
