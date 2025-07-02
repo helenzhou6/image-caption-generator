@@ -48,7 +48,11 @@ Inference:
     - Feed in the above ✅
     - Add decoder layers ✅
     - Add in mask to self attention ✅
-6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word)
+6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word) ✅
+7. Evaluation - using validation dataset
+    - Nice to have: during training, will output some text!
+8. Sweeps
+9. Inference
 
 
 Conceptual Questions
