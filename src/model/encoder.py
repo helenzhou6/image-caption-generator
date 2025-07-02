@@ -94,7 +94,7 @@ class DecoderBlock(nn.Module):
             nn.GELU(),
             nn.Linear(embed_dim * 4, embed_dim)
         )
-        # self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.1)
 
     def forward(self, x, attn_mask): 
     # recipe for the decoder
@@ -102,12 +102,12 @@ class DecoderBlock(nn.Module):
         x_res1 = x
         x = self.init_norm(x)
         x, _ = self.masked_attn(x, x, x, attn_mask=attn_mask)
-        x = x + x_res1
+        x = self.dropout(x + x_res1)
 
         x_res2 = x
         x = self.final_norm(x)
         x = self.mlp(x)
-        x = x + x_res2
+        x = self.dropout(x + x_res2)
 
         return x # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension) output embeddings
 
@@ -143,8 +143,8 @@ class Transformer(nn.Module):
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
-            text_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids)  # (B, T, D)
-
+        
+        text_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids)  # (B, T, D)
         curr_seq_length = caption_input_ids.size(1)  # Get current sequence length
         position_embeds = self.pos_encoding[:, :curr_seq_length, :].expand(batch_size, curr_seq_length, -1)
         caption_token_embeddings = text_embeddings + position_embeds

@@ -24,12 +24,6 @@ test_dataset_path = load_artifact_path(artifact_name="val_image_5_captions", ver
 with open(test_dataset_path, "rb") as f:
     test_dataset = pickle.load(f)
 print(f"Loaded test dataset with {len(test_dataset)} image-caption pairs.")
-check = test_dataset[0]
-# print image and caption of first item in test dataset
-# print(f"First item in test dataset: {check['image']}")
-# print(f"First caption in test dataset: {check['caption']}")
-# print(f"First item in test dataset: {check}")   
-
 
 
 class TestDataset(Dataset):
@@ -57,7 +51,6 @@ class TestDataset(Dataset):
 processed_test_dataset = TestDataset(test_dataset, clip_processor) 
 
 tokenizer = clip_processor.tokenizer
-idx2word = tokenizer.convert_ids_to_tokens(list(range(tokenizer.vocab_size)))
 dataloader = DataLoader(processed_test_dataset, batch_size=1)  # 1 image at a time
 
 model.eval()
@@ -65,35 +58,31 @@ scores = []
 
 with torch.no_grad():
     for sample in dataloader:
-        # Ensure pixel_values is a 4D tensor (batch_size, channels, height, width)
-        pixel_values = sample["image"]["pixel_values"].squeeze(0).to(device)  # shape: (1, 3, 224, 224)
+        pixel_values = sample["image"]["pixel_values"].squeeze(0).to(device)  # (1, 3, 224, 224)
         actual_captions = [caption[0] for caption in sample["caption"]]
 
-        generated_ids = []  # what you’ve generated so far
-        for _ in range(86):  # max caption length
-            if generated_ids:
-                input_ids = torch.tensor(generated_ids, dtype=torch.long, device=device).unsqueeze(0)
-            else:
-                input_ids = torch.empty((1, 0), dtype=torch.long, device=device)  # no tokens yet
+        # Initialize empty sequence (no tokens yet, model handles start token)
+        input_ids = torch.empty((1, 0), dtype=torch.long, device=device)
+
+        for _ in range(86):  # Max caption length
             batch = {
                 "image": {"pixel_values": pixel_values},
                 "caption": {"input_ids": input_ids},
             }
-            logits = model.forward(batch)
 
-            probs = F.softmax(logits, dim=-1) # Converts logits to probabilities summing to 1 
+            logits = model(batch)  # (1, T, vocab_size)
+            probs = F.softmax(logits[:, -1, :], dim=-1)  # (1, vocab_size)
+            next_token = probs.argmax(dim=-1, keepdim=True)  # (1, 1)
 
-            next_token = probs[:, -1, :].argmax(dim=-1, keepdim=True)
             input_ids = torch.cat([input_ids, next_token], dim=1)
 
             if next_token.item() == tokenizer.eos_token_id:
                 break
 
-            generated_ids.append(next_token)
+        # Decode full sequence (model already added start token internally)
+        generated_caption = tokenizer.decode(input_ids.squeeze().tolist(), skip_special_tokens=True)
 
-        generated_caption = tokenizer.decode(input_ids[0].tolist(), skip_special_tokens=True)
-
-        # Tokenize: METEOR expects List[str]
+        # METEOR expects tokens as lists of words
         hyp_tokens = generated_caption.split()
         ref_tokens = [ref.split() for ref in actual_captions]
 
@@ -102,7 +91,6 @@ with torch.no_grad():
 
         print(f"\nGenerated: {generated_caption}")
         print(f"METEOR: {meteor:.4f}")
-
 
 avg_score = sum(scores) / len(scores)
 print(f"\nAverage METEOR Score: {avg_score:.4f}")
