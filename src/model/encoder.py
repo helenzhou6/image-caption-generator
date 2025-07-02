@@ -134,6 +134,7 @@ class Transformer(nn.Module):
 
 
         # Run image through CLIP encoder to get embedding
+        # everything going through torch.no_grad does not get learnt
         with torch.no_grad():
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
