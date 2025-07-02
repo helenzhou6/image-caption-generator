@@ -18,7 +18,7 @@ else
     echo -e "\n✅ All required environment variables are set. Continuing...\n"
 fi
 
-git clone https://github.com/helenzhou6/image-caption-generator.git
+# git clone https://github.com/helenzhou6/image-caption-generator.git
 #cd MLX8-W2-DocumentSearch.git
 
 apt update

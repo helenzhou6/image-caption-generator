@@ -10,9 +10,10 @@ MLX week 4.
 
 ### Remote instructions
 1. Get your GPU and connect to it (either via VSCode SSH plugin or within the terminal)
-2. Export env variables needed `export WANDB_API_KEY="your_wandb_key" GITHUB_NAME="your_github_name" GITHUB_EMAIL="your_email@example.com"`
-3. To clone and install eveything, run `chmod +x ./gpu-script.sh` and `./gpu-script.sh`
-4. Run any commands in `tmux` (will have a green at the bottom) - i.e. run `tmux`! This will still run commands in the background even if you get kicked out (SSH connection fails)
+2. Clone the repo:  https://github.com/helenzhou6/image-caption-generator.git
+3. Export env variables needed `export WANDB_API_KEY="your_wandb_key" GITHUB_NAME="your_github_name" GITHUB_EMAIL="your_email@example.com"`
+4. To clone and install eveything, run `chmod +x ./gpu-script.sh` and `./gpu-script.sh`
+5. Run any commands in `tmux` (will have a green at the bottom) - i.e. run `tmux`! This will still run commands in the background even if you get kicked out (SSH connection fails)
     - To see all tmux sessions, run `tmux ls` and then run `tmux a -t <session name/number>` to go back to that session
 
 ## To dev
