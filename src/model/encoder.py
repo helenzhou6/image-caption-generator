@@ -34,7 +34,7 @@ tokenizer = clip_processor.tokenizer
 vocab = tokenizer.get_vocab()
 
 # Dataset/Dataloader for training
-# train_dataset = train_dataset[]
+# train_dataset = train_dataset[:100]
 
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
@@ -184,6 +184,7 @@ for epoch in range(EPOCHS):
     print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
     total_loss = 0.0
     num_batches = 0
+    sample_logged = False
     for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
         # add batch to device 
         batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
@@ -215,6 +216,27 @@ for epoch in range(EPOCHS):
 
         total_loss += loss.item()
         num_batches += 1
+
+        # Decode and print prediction vs target for first sample in batch
+        predicted_ids = logits.argmax(dim=-1)  # (B, T-1)
+        pred_tokens = predicted_ids[0].tolist()
+        target_tokens = y_target[0].tolist()
+
+        pred_text = tokenizer.decode(pred_tokens, skip_special_tokens=True)
+        target_text = tokenizer.decode(target_tokens, skip_special_tokens=True)
+
+        print(f"\n[Epoch {epoch + 1} | Batch {batch_idx + 1}]")
+        print("Predicted caption: ", pred_text)
+        print("Target caption: ", target_text)
+
+        # Optionally log to wandb
+        wandb.log({
+            "epoch": epoch + 1,
+            "batch": batch_idx + 1,
+            "batch_loss": loss.item(),
+            "sample_prediction": pred_text,
+            "sample_target": target_text
+        })
 
     # Compute average loss
     avg_epoch_loss = total_loss / num_batches
