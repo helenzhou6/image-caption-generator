@@ -34,7 +34,8 @@ tokenizer = clip_processor.tokenizer
 vocab = tokenizer.get_vocab()
 
 # Dataset/Dataloader for training
-train_dataset = train_dataset[:100]
+# train_dataset = train_dataset[]
+
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
         self.image_caption_pairs = image_caption_pairs
