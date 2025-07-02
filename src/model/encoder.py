@@ -1,5 +1,4 @@
 import transformers
-from utils import get_device, load_artifact_path, init_wandb, get_device
 from torch.utils.data import Dataset
 import pickle
 import numpy as np
@@ -8,6 +7,8 @@ import torch
 from torch import nn
 from tqdm import tqdm
 import wandb
+from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact
+
 
 BATCH_SIZE = 32
 EPOCHS = 10
@@ -243,4 +244,6 @@ for epoch in range(EPOCHS):
     print(f"Epoch {epoch + 1} Average Loss: {avg_epoch_loss:.4f}")
     wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss})
 
+torch.save(model.state_dict(), 'data/model.pt')
+save_artifact('model', 'The trained model for image captioning')
 wandb.finish()  # Finish the wandb run
