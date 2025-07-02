@@ -12,7 +12,7 @@ import os
 
 
 BATCH_SIZE = 32
-EPOCHS = 1
+EPOCHS = 10
 EMBEDDING_DIM = 512
 NUM_HEADS = 8
 IMAGE_EMBEDDING_DIM = 768
@@ -39,7 +39,7 @@ tokenizer = clip_processor.tokenizer
 vocab = tokenizer.get_vocab()
 
 # Dataset/Dataloader for training
-train_dataset = train_dataset[:10]
+# train_dataset = train_dataset[:10]
 
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
