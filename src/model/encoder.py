@@ -25,7 +25,6 @@ os.makedirs("data", exist_ok=True)
 
 # LOAD PICKLE FILE - wandb won't re-download the file if already exists
 init_wandb()
-caption_table = wandb.Table(columns=["batch_num", "predicted_caption", "target_caption"])
 
 train_image_caption_path = load_artifact_path(artifact_name="train_image_caption", version="latest", file_extension='pkl')
 with open(train_image_caption_path, "rb") as f:
@@ -39,7 +38,7 @@ tokenizer = clip_processor.tokenizer
 vocab = tokenizer.get_vocab()
 
 # Dataset/Dataloader for training
-# train_dataset = train_dataset[:10]
+# train_dataset = train_dataset[:100]
 
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
@@ -189,6 +188,7 @@ def train():
 
     for epoch in range(EPOCHS):
         print(f"--------- Epoch {epoch + 1}/{EPOCHS} ---------")
+        caption_table = wandb.Table(columns=["batch", "predicted_caption", "target_caption"])
         total_loss = 0.0
         num_batches = 0
         sample_logged = False
@@ -236,29 +236,21 @@ def train():
             print("Predicted caption: ", pred_text)
             print("Target caption: ", target_text)
 
-
-            # Optionally log to wandb
             caption_table.add_data(
                 batch_idx + 1,
                 pred_text,
                 target_text
             )
-            wandb.log({
-                "epoch": epoch + 1,
-                "batch": batch_idx + 1,
-                "batch_loss": loss.item(),
-                "captions": caption_table
-            })
 
         # Compute average loss
         avg_epoch_loss = total_loss / num_batches
         print(f"Epoch {epoch + 1} Average Loss: {avg_epoch_loss:.4f}")
-        wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss})
+        wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss, f"captions_epoch_{epoch+1}": caption_table})
 
     torch.save(model.state_dict(), 'data/model.pt')
     save_artifact('model', 'The trained model for image captioning')
 
 # if __name__ == "__main__":
-    # train()  # Start training the model
+#     train()  # Start training the model
 
-    # wandb.finish()  # Finish the wandb run
+#     wandb.finish()  # Finish the wandb run
