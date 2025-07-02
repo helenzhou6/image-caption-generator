@@ -8,10 +8,11 @@ from torch import nn
 from tqdm import tqdm
 import wandb
 from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact
+import os
 
 
 BATCH_SIZE = 32
-EPOCHS = 10
+EPOCHS = 1
 EMBEDDING_DIM = 512
 NUM_HEADS = 8
 IMAGE_EMBEDDING_DIM = 768
@@ -20,9 +21,12 @@ NUM_LAYERS = 2
 LEARNING_RATE = 1e-3
  
 device = get_device()
+os.makedirs("data", exist_ok=True)
 
 # LOAD PICKLE FILE - wandb won't re-download the file if already exists
 init_wandb()
+caption_table = wandb.Table(columns=["batch_num", "predicted_caption", "target_caption"])
+
 train_image_caption_path = load_artifact_path(artifact_name="train_image_caption", version="latest", file_extension='pkl')
 with open(train_image_caption_path, "rb") as f:
     train_dataset = pickle.load(f)
@@ -35,7 +39,7 @@ tokenizer = clip_processor.tokenizer
 vocab = tokenizer.get_vocab()
 
 # Dataset/Dataloader for training
-# train_dataset = train_dataset[:100]
+train_dataset = train_dataset[:10]
 
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
@@ -230,13 +234,18 @@ for epoch in range(EPOCHS):
         print("Predicted caption: ", pred_text)
         print("Target caption: ", target_text)
 
+
         # Optionally log to wandb
+        caption_table.add_data(
+            batch_idx + 1,
+            pred_text,
+            target_text
+        )
         wandb.log({
             "epoch": epoch + 1,
             "batch": batch_idx + 1,
             "batch_loss": loss.item(),
-            "sample_prediction": pred_text,
-            "sample_target": target_text
+            "captions": caption_table
         })
 
     # Compute average loss
