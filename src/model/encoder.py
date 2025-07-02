@@ -139,6 +139,7 @@ class Transformer(nn.Module):
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
+            text_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids)  # (B, T, D)
         # -- Caption Embedding --
         # Create position ids (0, 1, 2, ..., T-1) for each sequence in the batch
         # position_ids = torch.arange(caption_input_ids.size(1), device=device).unsqueeze(0)  # (1, T)
@@ -146,7 +147,7 @@ class Transformer(nn.Module):
 
         curr_seq_length = caption_input_ids.size(1)  # Get current sequence length
         position_embeds = self.pos_encoding[:, :curr_seq_length, :].expand(batch_size, curr_seq_length, -1)
-        caption_token_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids) + position_embeds
+        caption_token_embeddings = text_embeddings + position_embeds
 
         #batch_seq_length = caption_token_embeddings.size(1)
         projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
