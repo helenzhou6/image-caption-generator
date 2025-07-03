@@ -8,6 +8,7 @@ dependencies = [
     "clip>=0.2.0",
     "datasets==3.6.0",
     "ipykernel>=6.29.5",
+    "nltk>=3.9.1",
     "numpy==1.26.4",
     "pandas>=2.3.0",
     "pillow>=11.2.1",

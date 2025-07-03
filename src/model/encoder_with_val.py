@@ -1,5 +1,5 @@
 import transformers
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader, Subset
 import pickle
 import numpy as np
 from PIL    import Image
@@ -9,7 +9,9 @@ from tqdm import tqdm
 import wandb
 from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact
 import os
-
+import nltk
+from nltk.translate.meteor_score import meteor_score
+import torch.nn.functional as F
 
 BATCH_SIZE = 32
 EPOCHS = 10
@@ -70,7 +72,7 @@ def collate_fn(batch):
     input_ids = torch.nn.utils.rnn.pad_sequence(
         [item["caption"]["input_ids"].squeeze(0) for item in batch],
         batch_first=True,
-        padding_value=0
+        padding_value=49405
     )
     return {
         "image": {"pixel_values": pixel_values},
@@ -94,6 +96,7 @@ class DecoderBlock(nn.Module):
             nn.GELU(),
             nn.Linear(embed_dim * 4, embed_dim)
         )
+        self.dropout = nn.Dropout(0.2)
 
     def forward(self, x, attn_mask): 
     # recipe for the decoder
@@ -101,12 +104,12 @@ class DecoderBlock(nn.Module):
         x_res1 = x
         x = self.init_norm(x)
         x, _ = self.masked_attn(x, x, x, attn_mask=attn_mask)
-        x = x + x_res1
+        x = self.dropout(x + x_res1)
 
         x_res2 = x
         x = self.final_norm(x)
         x = self.mlp(x)
-        x = x + x_res2
+        x = self.dropout(x + x_res2)
 
         return x # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension) output embeddings
 
@@ -118,6 +121,7 @@ class Transformer(nn.Module):
         self.start_token_id = 49406  # CLIP’s <|startoftext|> token ID
         self.pos_encoding = nn.Parameter(torch.zeros(1, CAPTION_MAX_SEQ_LEN, embed_dim))
         nn.init.trunc_normal_(self.pos_encoding, std=0.02)
+
 
         self.decoder_blocks = nn.ModuleList([
             DecoderBlock(embed_dim, num_heads)
@@ -141,8 +145,8 @@ class Transformer(nn.Module):
             image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
             patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
             patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
-            text_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids)  # (B, T, D)
-
+        
+        text_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids)  # (B, T, D)
         curr_seq_length = caption_input_ids.size(1)  # Get current sequence length
         position_embeds = self.pos_encoding[:, :curr_seq_length, :].expand(batch_size, curr_seq_length, -1)
         caption_token_embeddings = text_embeddings + position_embeds
@@ -171,13 +175,76 @@ class Transformer(nn.Module):
         return x
 
 
+# Load validation dataset
+val_dataset_path = load_artifact_path(artifact_name="val_image_5_captions", version="latest", file_extension='pkl')
+with open(val_dataset_path, "rb") as f:
+    val_dataset = pickle.load(f)
+
+
+class ValDataset(Dataset):
+    def __init__(self, image_caption_pairs, processor):
+        self.image_caption_pairs = image_caption_pairs
+        self.processor = processor
+
+    def __len__(self):
+        return len(self.image_caption_pairs)
+
+    def __getitem__(self, idx):
+        item = self.image_caption_pairs[idx]
+        image = item["image"]
+        captions = item["caption"]
+
+        processed_image = self.processor(images=image, return_tensors="pt")
+        return {
+            "image": processed_image,
+            "caption": captions  # keep 5 captions for METEOR
+        }
+
+val_dataset = ValDataset(val_dataset, clip_processor)
+val_subset = torch.utils.data.Subset(val_dataset, range(0, 20))
+val_loader = DataLoader(val_subset, batch_size=1, shuffle=False)
+
+def compute_meteor(model, val_loader, tokenizer, device, max_len=86):
+    model.eval()
+    scores = []
+    with torch.no_grad():
+        for sample in val_loader:
+            pixel_values = sample["image"]["pixel_values"].squeeze(0).to(device)
+            actual_captions = [caption[0] for caption in sample["caption"]]
+
+            input_ids = torch.empty((1, 0), dtype=torch.long, device=device)
+
+            for _ in range(max_len):
+                batch = {
+                    "image": {"pixel_values": pixel_values},
+                    "caption": {"input_ids": input_ids},
+                }
+
+                logits = model(batch)
+                probs = F.softmax(logits[:, -1, :], dim=-1)
+                next_token = probs.argmax(dim=-1, keepdim=True)
+                input_ids = torch.cat([input_ids, next_token], dim=1)
+
+                if next_token.item() == tokenizer.eos_token_id:
+                    break
+
+            generated_caption = tokenizer.decode(input_ids.squeeze().tolist(), skip_special_tokens=True)
+            hyp_tokens = generated_caption.split()
+            ref_tokens = [ref.split() for ref in actual_captions]
+
+            meteor = meteor_score(ref_tokens, hyp_tokens)
+            scores.append(meteor)
+
+    return sum(scores) / len(scores)
+
 
 # Initialize the model with CLIP encoder and custom decoder
 model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
 
 
-padding_token_id = 0  # Our defined <|padding|> token ID
+padding_token_id = 49405  # Our defined <|padding|> token ID
 end_token_id = 49407  # CLIP’s <|endoftext|> token ID
+
 
 def train():
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
@@ -227,8 +294,8 @@ def train():
                 pred_tokens = predicted_ids[0].tolist()
                 target_tokens = y_target[0].tolist()
 
-                pred_text = tokenizer.decode(pred_tokens, skip_special_tokens=False)
-                target_text = tokenizer.decode(target_tokens, skip_special_tokens=False)
+                pred_text = tokenizer.decode(pred_tokens, skip_special_tokens=True)
+                target_text = tokenizer.decode(target_tokens, skip_special_tokens=True)
 
                 print(f"\n[Epoch {epoch + 1} | Batch {batch_idx + 1}]")
                 print("Predicted caption: ", pred_text)
@@ -243,7 +310,13 @@ def train():
         # Compute average loss
         avg_epoch_loss = total_loss / num_batches
         print(f"Epoch {epoch + 1} Average Loss: {avg_epoch_loss:.4f}")
-        wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss, f"captions_epoch_{epoch+1}": caption_table})
+
+        # Evaluate METEOR after each epoch
+        avg_meteor = compute_meteor(model, val_loader, tokenizer, device)
+        print(f"Epoch {epoch + 1} METEOR Score: {avg_meteor:.4f}")
+        wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss, "meteor": avg_meteor, f"captions_epoch_{epoch+1}": caption_table})
+
+
 
     torch.save(model.state_dict(), 'data/model.pt')
     save_artifact('model', 'The trained model for image captioning')
