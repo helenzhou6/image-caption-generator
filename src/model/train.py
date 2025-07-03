@@ -1,18 +1,16 @@
-import transformers
-from torch.utils.data import Dataset, DataLoader, Subset
+from torch.utils.data import Dataset, DataLoader
 import pickle
-import numpy as np
-from PIL    import Image
 import torch
 from torch import nn
 from tqdm import tqdm
 import wandb
-from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact
+from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact, load_model_path
 import os
-import nltk
 from nltk.translate.meteor_score import meteor_score
 import torch.nn.functional as F
+from init_model import Clip, Transformer
 
+#  --- CONFIG PARAMS ---
 BATCH_SIZE = 32
 EPOCHS = 10
 EMBEDDING_DIM = 512
@@ -21,26 +19,39 @@ IMAGE_EMBEDDING_DIM = 768
 CAPTION_MAX_SEQ_LEN = 86
 NUM_LAYERS = 2
 LEARNING_RATE = 1e-3
- 
+MODEL_VERSION = 'v9'
+
+padding_token_id = 49405  # Our defined <|padding|> token ID
+end_token_id = 49407  # CLIP’s <|endoftext|> token ID
+
 device = get_device()
-os.makedirs("data", exist_ok=True)
 
-# LOAD PICKLE FILE - wandb won't re-download the file if already exists
+#  --- LOAD ALL THE THINGS ---
 init_wandb()
-
+os.makedirs("data", exist_ok=True)
+# Load training dataset
 train_image_caption_path = load_artifact_path(artifact_name="train_image_caption", version="latest", file_extension='pkl')
 with open(train_image_caption_path, "rb") as f:
     train_dataset = pickle.load(f)
 
-# Load the full CLIP model (image + text encoders)
-clip_model = transformers.CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
-clip_model.eval()
-clip_processor = transformers.CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-tokenizer = clip_processor.tokenizer
-vocab = tokenizer.get_vocab()
+# Load validation dataset
+val_dataset_path = load_artifact_path(artifact_name="val_image_5_captions", version="latest", file_extension='pkl')
+with open(val_dataset_path, "rb") as f:
+    val_dataset = pickle.load(f)
 
-# Dataset/Dataloader for training
-# train_dataset = train_dataset[:100]
+# Load the full CLIP model (image + text encoders)
+clip = Clip()
+clip_model = clip.clip_model
+clip_processor = clip.clip_processor
+tokenizer = clip.tokenizer
+
+# Initialize the model with CLIP encoder and custom decoder
+model_path = load_model_path(f'model:{MODEL_VERSION}')
+model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
+model.load_state_dict(torch.load(model_path, map_location=device))
+
+
+# --- Set up Dataloaders for training and evaluation ---
 
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
@@ -82,104 +93,8 @@ def collate_fn(batch):
     }
 
 train_dataset = ImageDataset(train_dataset, clip_processor)
-dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
-
-class DecoderBlock(nn.Module):
-    def __init__ (self, embed_dim, num_heads):
-        super().__init__()
-        # ingredients for the decoder
-        self.init_norm = nn.LayerNorm(embed_dim)
-        self.masked_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
-        self.final_norm = nn.LayerNorm(embed_dim)
-        self.mlp = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim * 4),
-            nn.GELU(),
-            nn.Linear(embed_dim * 4, embed_dim)
-        )
-        self.dropout = nn.Dropout(0.2)
-
-    def forward(self, x, attn_mask): 
-    # recipe for the decoder
-        # x: (B, T, D) - input embeddings
-        x_res1 = x
-        x = self.init_norm(x)
-        x, _ = self.masked_attn(x, x, x, attn_mask=attn_mask)
-        x = self.dropout(x + x_res1)
-
-        x_res2 = x
-        x = self.final_norm(x)
-        x = self.mlp(x)
-        x = self.dropout(x + x_res2)
-
-        return x # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension) output embeddings
-
-class Transformer(nn.Module):
-    def __init__(self, clip_model, embed_dim, num_heads, image_embedding_dim, num_layers):
-        super().__init__()
-        self.clip_model = clip_model
-        self.project_image_to_caption = nn.Linear(image_embedding_dim, embed_dim)
-        self.start_token_id = 49406  # CLIP’s <|startoftext|> token ID
-        self.pos_encoding = nn.Parameter(torch.zeros(1, CAPTION_MAX_SEQ_LEN, embed_dim))
-        nn.init.trunc_normal_(self.pos_encoding, std=0.02)
-
-
-        self.decoder_blocks = nn.ModuleList([
-            DecoderBlock(embed_dim, num_heads)
-            for _ in range(num_layers)
-        ])
-
-        # NEW: Final projection to vocab size
-        self.vocab_projection = nn.Linear(embed_dim, clip_model.config.text_config.vocab_size)
-
-    def forward(self, batch):
-        processed_test_image = batch["image"]
-        processed_test_caption = batch["caption"]
-        caption_input_ids = processed_test_caption.get("input_ids")  # shape: (B, T)
-        batch_size = caption_input_ids.shape[0]  # Get batch size from input_ids
-        start_token_ids = torch.full((batch_size, 1), self.start_token_id, dtype=torch.long, device=device)
-        start_token_embed = clip_model.text_model.embeddings.token_embedding(start_token_ids)  # (B, 1, D)
-
-        # Run image through CLIP encoder to get embedding
-        # everything going through torch.no_grad does not get learnt
-        with torch.no_grad():
-            image_embed = clip_model.vision_model(**processed_test_image) # Last hidden state of the image encoder and pooled output (1, 512)
-            patch_tokens = image_embed.last_hidden_state  # shape: (1, 50, 768)
-            patch_embeddings = patch_tokens[:, 1:, :]  # (1, 49, 768)
-        
-        text_embeddings = clip_model.text_model.embeddings.token_embedding(caption_input_ids)  # (B, T, D)
-        curr_seq_length = caption_input_ids.size(1)  # Get current sequence length
-        position_embeds = self.pos_encoding[:, :curr_seq_length, :].expand(batch_size, curr_seq_length, -1)
-        caption_token_embeddings = text_embeddings + position_embeds
-
-        projected_image_embeddings = self.project_image_to_caption(patch_embeddings)
-        # concatenate proj_img_emddings and caption embedddings 
-        concatenated_tokens = torch.cat([start_token_embed, projected_image_embeddings, caption_token_embeddings], dim=1) # (B, T, D) = (Batch Size, Token Dimension, Emb Dimension)
-        # Set variables fo the batch and token sizes
-        T = caption_token_embeddings.size(1)
-        I = 1 + projected_image_embeddings.size(1)  # start token + 49 image tokens
-        total_seq_len = I + T
-
-        # Initialize full attention mask: allow everything
-        attn_mask = torch.zeros((total_seq_len, total_seq_len), device=device)
-        # Apply causal mask ONLY to the caption portion
-        caption_mask = torch.triu(torch.ones((T, T), device=device), diagonal=1)
-        caption_mask = caption_mask.masked_fill(caption_mask == 1, float('-inf')).masked_fill(caption_mask == 0, float(0.0))
-        attn_mask[I:, I:] = caption_mask  # Now float, with -inf for masked
-
-        for decoder_block in self.decoder_blocks:
-            x = decoder_block(concatenated_tokens, attn_mask)
-        
-        # Project decoder outputs to vocab logits
-        x = self.vocab_projection(x[:, -T:, :])  # (B, T, V)
-
-        return x
-
-
-# Load validation dataset
-val_dataset_path = load_artifact_path(artifact_name="val_image_5_captions", version="latest", file_extension='pkl')
-with open(val_dataset_path, "rb") as f:
-    val_dataset = pickle.load(f)
-
+# train_dataset = train_dataset[:100]
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
 class ValDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
@@ -204,6 +119,7 @@ val_dataset = ValDataset(val_dataset, clip_processor)
 val_subset = torch.utils.data.Subset(val_dataset, range(0, 20))
 val_loader = DataLoader(val_subset, batch_size=1, shuffle=False)
 
+# --- Meteor calculation ---
 def compute_meteor(model, val_loader, tokenizer, device, max_len=86):
     model.eval()
     scores = []
@@ -237,15 +153,7 @@ def compute_meteor(model, val_loader, tokenizer, device, max_len=86):
 
     return sum(scores) / len(scores)
 
-
-# Initialize the model with CLIP encoder and custom decoder
-model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
-
-
-padding_token_id = 49405  # Our defined <|padding|> token ID
-end_token_id = 49407  # CLIP’s <|endoftext|> token ID
-
-
+# --- Training Loop ---
 def train():
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.CrossEntropyLoss(ignore_index=padding_token_id)  # Ignore padding index
@@ -256,7 +164,7 @@ def train():
         total_loss = 0.0
         num_batches = 0
         sample_logged = False
-        for batch_idx, batch in  enumerate(tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
+        for batch_idx, batch in  enumerate(tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")):        
             # add batch to device 
             batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
             batch["caption"]["input_ids"] = batch["caption"]["input_ids"].to(device)
