@@ -22,7 +22,9 @@ MLX week 4.
     - To run python file: either use `uv run <file name>` will auto use the .venv that uv generates OR you can do `source .venv/bin/activate` to activate your virtual env and then run `python3 <file name>`
     - If you have VSCode on mac, you can do Shift, Command, P to open preferences, and select the .venv. Then you can press 'play' button and that will use it.
 2. (Optional): run `uv run src/model/dataset.py` that will create the training and validation dataset as pickle files & upload to wandb. This will not need to be run if anyone has run this before and artifacts are already in wandb.
-3. Run `uv run src/model/train.py` to run the model
+3. Run `uv run src/model/train.py` to train and evaluate the model (against METEOR)
+4. To run inference - run `uv run src/model/inference.py src/model/image.png` (or wherever the image is)
+- That will generate the image with a caption and outputs it as generated_caption.png
 
 ## Brainstorming session
 Inference:
@@ -49,10 +51,10 @@ Inference:
     - Add decoder layers ✅
     - Add in mask to self attention ✅
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word) ✅
-7. Evaluation - using validation dataset
-    - Nice to have: during training, will output some text!
+7. Evaluation - using validation dataset ✅
+    - Nice to have: during training, will output some text! ✅
 8. Sweeps
-9. Inference
+9. Inference ✅
 
 
 Conceptual Questions
