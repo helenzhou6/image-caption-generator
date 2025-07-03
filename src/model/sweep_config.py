@@ -3,7 +3,7 @@ sweep_configuration = {
     "name": "meteor_sweep",
     "metric": {
         "name": "meteor",
-        "goal": "minimize"
+        "goal": "maximum"
     },
     "parameters": {
         "EMBEDDING_DIM": {

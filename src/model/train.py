@@ -253,7 +253,7 @@ if __name__ == "__main__":
             sweep_id=sweep_id,
             function=train,
             project="ImageCaptionGenerator",
-            count=2  # Number of runs for the sweep,
+            count=4  # Number of runs for the sweep,
         )
     elif run_type == "train":
         train()
