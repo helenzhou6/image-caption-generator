@@ -4,6 +4,12 @@ from torch import nn
 import transformers
 from utils import get_device
 
+# MUST BE SAME AS TRAIN.PY
+EMBEDDING_DIM = 512
+NUM_HEADS = 8
+IMAGE_EMBEDDING_DIM = 768
+NUM_LAYERS = 2
+
 CAPTION_MAX_SEQ_LEN = 86
 PRE_TRAINED_CLIP_MODEL = "openai/clip-vit-base-patch32"
 PRE_TRAINED_CLIP_PROCESSOR = "openai/clip-vit-base-patch32"

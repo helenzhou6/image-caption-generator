@@ -6,6 +6,7 @@ from tqdm import tqdm
 import wandb
 from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact, load_model_path
 import os
+import nltk
 from nltk.translate.meteor_score import meteor_score
 import torch.nn.functional as F
 from init_model import Clip, Transformer
