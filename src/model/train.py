@@ -4,24 +4,42 @@ import torch
 from torch import nn
 from tqdm import tqdm
 import wandb
-from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact
+from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact, init_wandb
 import os
 import nltk
 from nltk.translate.meteor_score import meteor_score
 import torch.nn.functional as F
 from init_model import Clip, Transformer
+from sweep_config import sweep_configuration
+
+run_type= "sweep_run"  # Change to "sweep" or "train"
+print("RUNNING TYPE: ", run_type)
+
+default_wandb_config = {
+    "NUM_HEADS": 16,
+    "EMBEDDING_DIM": 512,
+    "NUM_LAYERS": 8
+}
+wandb.init(project="ImageCaptionGenerator", config=default_wandb_config)
+config = wandb.config
 
 #  --- CONFIG PARAMS ---
+config = wandb.config
+
+EMBEDDING_DIM = config.EMBEDDING_DIM
+NUM_LAYERS = config.NUM_LAYERS
+NUM_HEADS = config.NUM_HEADS
+IMAGE_EMBEDDING_DIM = 768
+
 BATCH_SIZE = 224
 EPOCHS = 10
-EMBEDDING_DIM = 512
-NUM_HEADS = 16
-IMAGE_EMBEDDING_DIM = 768
 CAPTION_MAX_SEQ_LEN = 86
-NUM_LAYERS = 8
 LEARNING_RATE = 1e-3
+
 # TODO: Currently below not working - had an error with cuda
 NUM_WORKERS = 4
+
+print(f"Running sweep with EMBEDDING_DIM={EMBEDDING_DIM}, NUM_LAYERS={NUM_LAYERS}, NUM_HEADS={NUM_HEADS}")
 
 padding_token_id = 49405  # Our defined <|padding|> token ID
 end_token_id = 49407  # CLIP’s <|endoftext|> token ID
@@ -229,6 +247,15 @@ def train():
     save_artifact('model', 'The trained model for image captioning')
 
 if __name__ == "__main__":
-    train()  # Start training the model
+    if run_type == "sweep_run":
+        sweep_id = wandb.sweep(sweep=sweep_configuration, project="ImageCaptionGenerator")
+        wandb.agent(
+            sweep_id=sweep_id,
+            function=train,
+            project="ImageCaptionGenerator",
+            count=2  # Number of runs for the sweep,
+        )
+    elif run_type == "train":
+        train()
 
     wandb.finish()  # Finish the wandb run
