@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset, DataLoader
 import torch
 from torch import nn
+import os
 import wandb
 from datasets import load_dataset
 from transformers import CLIPProcessor, CLIPModel, AutoTokenizer, AutoModelForCausalLM
@@ -14,26 +15,14 @@ import torch.multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
 HF_DATASET_NAME = "sugarbot/nutrition-labels-dataset"
-# WandB config
-default_wandb_config = {
-    "NUM_HEADS": 16,
-    "EMBEDDING_DIM": 512,
-    "NUM_LAYERS": 8
-}
-wandb.init(
-    project="QwenNutrionist",
-    entity="bunch-image-caption-generator",
-    config=default_wandb_config
-)
-config = wandb.config
 
 # Hyperparameters
-EMBEDDING_DIM = config.EMBEDDING_DIM
-NUM_LAYERS = config.NUM_LAYERS
-NUM_HEADS = config.NUM_HEADS
+EMBEDDING_DIM = 512
+NUM_LAYERS = 2
+NUM_HEADS = 2
 IMAGE_EMBEDDING_DIM = 768
 BATCH_SIZE = 32
-EPOCHS = 5
+EPOCHS = 1
 CAPTION_MAX_SEQ_LEN = 86
 LEARNING_RATE = 1e-4
 
@@ -43,7 +32,6 @@ end_token_id = 49407
 
 device = get_device()
 nltk.download('wordnet')
-init_wandb()
 
 # --- LOAD HUGGINGFACE DATASET ---
 dataset = load_dataset(HF_DATASET_NAME, split="train")  # update with real dataset
@@ -186,5 +174,9 @@ def train():
 
 # --- MAIN ---
 if __name__ == "__main__":
+    wandb.init(
+        project="QwenNutrionist",
+        entity="bunch-image-caption-generator",
+    )
     train()
     wandb.finish()
