@@ -1,52 +1,53 @@
 import torch
 import torch.nn.functional as F
-import os
 from PIL import Image
+from io import BytesIO
+import streamlit as st
+
 from init_model import Transformer, Clip, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS
 from utils import get_device, init_wandb, load_model_path
-import matplotlib.pyplot as plt
 
 # --- CONFIGURATION ---
 MODEL_VERSION = 'v9'
 device = get_device()
 
-# --- LOAD MODEL & TOKENIZER --- 
-init_wandb()
-os.makedirs("data", exist_ok=True)
+# --- LOAD MODEL & TOKENIZER ---
+@st.cache_resource
+def load_model():
+    init_wandb()
+    clip = Clip()
+    clip_model = clip.clip_model
+    clip_processor = clip.clip_processor
+    tokenizer = clip.tokenizer
 
-# Load the full CLIP model (image + text encoders)
-clip = Clip()
-clip_model = clip.clip_model
-clip_processor = clip.clip_processor
-tokenizer = clip.tokenizer
+    model_path = load_model_path(f'model:{MODEL_VERSION}')
+    model = Transformer(
+        clip_model,
+        EMBEDDING_DIM,
+        NUM_HEADS,
+        IMAGE_EMBEDDING_DIM,
+        NUM_LAYERS
+    ).to(device)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+    return model, clip_processor, tokenizer
 
-model_path = load_model_path(f'model:{MODEL_VERSION}')
-model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
-model.load_state_dict(torch.load(model_path, map_location=device))
-model.eval()
+model, clip_processor, tokenizer = load_model()
 
-def generate_caption(image, model, tokenizer, device):
-    """
-    image: PIL Image or path to image file
-    Returns: generated caption string
-    """
-    if isinstance(image, str):
-        image = Image.open(image).convert('RGB')
-
-    # Preprocess image for CLIP
+def generate_caption(image, model, tokenizer, clip_processor, device):
+    image = image.convert("RGB")
     inputs = clip_processor(images=image, return_tensors="pt")
-    pixel_values = inputs["pixel_values"].to(device)  # (1, 3, 224, 224)
-
-    # Start with empty input_ids, model appends start token internally
+    pixel_values = inputs["pixel_values"].to(device)
     input_ids = torch.empty((1, 0), dtype=torch.long, device=device)
-    MAX_AUTOREGRESSIVE_STEPS = 256  # Safety to avoid infinite loop, but essentially unlimited
+    MAX_AUTOREGRESSIVE_STEPS = 256
+
     with torch.no_grad():
         for _ in range(MAX_AUTOREGRESSIVE_STEPS):
             batch = {
                 "image": {"pixel_values": pixel_values},
                 "caption": {"input_ids": input_ids},
             }
-            logits = model(batch)  # (1, seq_len, vocab_size)
+            logits = model(batch)
             next_token_logits = logits[:, -1, :]
             probs = F.softmax(next_token_logits, dim=-1)
             next_token = probs.argmax(dim=-1, keepdim=True)
@@ -54,40 +55,41 @@ def generate_caption(image, model, tokenizer, device):
             if next_token.item() == tokenizer.eos_token_id:
                 break
 
-    # Decode, skipping special tokens
     generated_caption = tokenizer.decode(
         input_ids.squeeze().tolist(), skip_special_tokens=True
     )
-    return generated_caption, image
+    return generated_caption
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: python inference.py path/to/image.jpg")
-        exit(1)
+def get_image_bytes(image: Image.Image):
+    buffer = BytesIO()
+    image.thumbnail((200, 200))
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
 
-    image_path = sys.argv[1]
-    caption, image = generate_caption(image_path, model, tokenizer, device)
-    print("\nGenerated Caption:")
-    print(caption)
+# --- STREAMLIT UI ---
+st.title("🖼️ Image Caption Generator")
 
-    # --- Show the image and caption using matplotlib ---
-    plt.figure(figsize=(8, 6))
-    plt.imshow(image)
-    plt.axis('off')
+uploaded_files = st.file_uploader(
+    "Choose image files", 
+    type=["png", "jpg", "jpeg"], 
+    accept_multiple_files=True
+)
 
-    # Add the caption just below the image, centered
-    plt.text(
-        0.5, -0.05,                              # x=50% (center), y=just below the image
-        f"Generated caption: {caption}",
-        ha='center',
-        va='top',
-        fontsize=11,
-        wrap=True,
-        transform=plt.gca().transAxes
-    )
+if uploaded_files:
+    st.write(f"Found {len(uploaded_files)} image(s). Generating captions...")
+    for uploaded_file in uploaded_files:
+        try:
+            image = Image.open(uploaded_file)
+            caption = generate_caption(image, model, tokenizer, clip_processor, device)
+            image_bytes = get_image_bytes(image)
 
-    plt.subplots_adjust(bottom=0.22)  # Adjust if text is cut off or too far
-    plt.savefig("generated_caption.png", bbox_inches='tight', pad_inches=0.1)
-    plt.close()
-    print("Saved plot to generated_caption.png")
+            cols = st.columns([1, 2])
+            with cols[0]:
+                st.image(image_bytes, caption=uploaded_file.name, use_container_width=True)
+            with cols[1]:
+                st.markdown(f"**Caption:** {caption}")
+            st.markdown("---")
+        except Exception as e:
+            st.error(f"Failed to process `{uploaded_file.name}`: {e}")
+else:
+    st.info("Upload one or more image files (JPG, PNG).")

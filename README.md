@@ -2,6 +2,9 @@
 Aim: To take an image and generate a caption with **magic** (a.k.a a CLIP Visual Encoder + Custom Decoder)
 MLX week 4.
 
+Screenshot:
+![Image of inference working](https://github.com/user-attachments/assets/ffc784f0-d6f2-4285-a923-1664ea2bc24d)
+
 ## Pre-requisities 
 - Python 3.10
 - uv - install via https://github.com/astral-sh/uv
@@ -23,8 +26,7 @@ MLX week 4.
     - If you have VSCode on mac, you can do Shift, Command, P to open preferences, and select the .venv. Then you can press 'play' button and that will use it.
 2. (Optional): run `uv run src/model/dataset.py` that will create the training and validation dataset as pickle files & upload to wandb. This will not need to be run if anyone has run this before and artifacts are already in wandb.
 3. Run `uv run src/model/train.py` to train and evaluate the model (against METEOR)
-4. To run inference - run `uv run src/model/inference.py src/model/image.png` (or wherever the image is)
-- That will generate the image with a caption and outputs it as generated_caption.png
+4. To run inference - run `uv run streamlit run src/model/inference.py` that will spin up the website, and generate captions based on images being uploaded
 
 ## Brainstorming session
 Inference:
