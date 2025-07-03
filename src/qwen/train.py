@@ -21,7 +21,7 @@ EMBEDDING_DIM = 512
 NUM_LAYERS = 2
 NUM_HEADS = 2
 IMAGE_EMBEDDING_DIM = 768
-BATCH_SIZE = 32
+BATCH_SIZE = 2
 EPOCHS = 1
 CAPTION_MAX_SEQ_LEN = 86
 LEARNING_RATE = 1e-4
@@ -163,6 +163,8 @@ def train():
 
             total_loss += loss.item()
             count += 1
+
+            torch.cuda.empty_cache()
 
         avg_loss = total_loss / count
         meteor = compute_meteor(model, val_loader)
