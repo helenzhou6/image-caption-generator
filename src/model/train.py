@@ -26,6 +26,9 @@ end_token_id = 49407  # CLIP’s <|endoftext|> token ID
 
 device = get_device()
 
+# Download NLTK resources for METEOR
+nltk.download('wordnet')
+
 #  --- LOAD ALL THE THINGS ---
 init_wandb()
 os.makedirs("data", exist_ok=True)
