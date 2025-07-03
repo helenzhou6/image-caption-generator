@@ -93,7 +93,7 @@ def collate_fn(batch):
     }
 
 train_dataset = ImageDataset(train_dataset, clip_processor)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn, num_workers=NUM_WORKERS)
 
 class ValDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
@@ -116,7 +116,7 @@ class ValDataset(Dataset):
 
 val_dataset = ValDataset(val_dataset, clip_processor)
 val_subset = torch.utils.data.Subset(val_dataset, range(0, 20))
-val_loader = DataLoader(val_subset, batch_size=1, shuffle=False)
+val_loader = DataLoader(val_subset, batch_size=1, shuffle=False, num_workers=NUM_WORKERS)
 
 # --- Meteor calculation ---
 def compute_meteor(model, val_loader, tokenizer, device, max_len=256):
