@@ -122,7 +122,7 @@ val_subset = torch.utils.data.Subset(val_dataset, range(0, 20))
 val_loader = DataLoader(val_subset, batch_size=1, shuffle=False)
 
 # --- Meteor calculation ---
-def compute_meteor(model, val_loader, tokenizer, device, max_len=86):
+def compute_meteor(model, val_loader, tokenizer, device, max_len=256):
     model.eval()
     scores = []
     with torch.no_grad():
