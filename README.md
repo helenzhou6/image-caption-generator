@@ -28,8 +28,9 @@ Screenshot:
 3. Run `uv run src/model/train.py` to train and evaluate the model (against METEOR)
 4. To run inference - run `uv run streamlit run src/model/inference.py` that will spin up the website, and generate captions based on images being uploaded
 
-### Qwen
-1. To run `uv run src/qwen/test.py` and change image name to which ever you want it to direct at
+### Custom dataset generator
+1. To run `uv run src/custom-dataset-generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to wandb
+2. To check the output, run `uv run src/custom-dataset-generator/read_output.py`
 
 ## Brainstorming session
 Inference:

@@ -6,6 +6,7 @@ data/
 wandb/
 artifacts/
 *.png
+*.pkl
 
 # C extensions
 *.so
