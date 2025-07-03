@@ -1,5 +1,6 @@
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoTokenizer, AutoProcessor
 from qwen_vl_utils import process_vision_info
+import os
 
 # default: Load the model on the available device(s)
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
@@ -23,13 +24,17 @@ processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")
 # max_pixels = 1280*28*28
 # processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct", min_pixels=min_pixels, max_pixels=max_pixels)
 
+IMAGE_NAME = "000034.jpg"
+script_dir = os.path.dirname(os.path.abspath(__file__))  # directory of the running script
+image_rel_path = os.path.join("..", "model", "nutrition_labels", IMAGE_NAME)
+IMAGE_PATH = os.path.join(script_dir, image_rel_path)
 messages = [
     {
         "role": "user",
         "content": [
             {
                 "type": "image",
-                "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",
+                "image": IMAGE_PATH,
             },
             {"type": "text", "text": "Describe this image."},
         ],

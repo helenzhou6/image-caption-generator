@@ -28,6 +28,9 @@ Screenshot:
 3. Run `uv run src/model/train.py` to train and evaluate the model (against METEOR)
 4. To run inference - run `uv run streamlit run src/model/inference.py` that will spin up the website, and generate captions based on images being uploaded
 
+### Qwen
+1. To run `uv run src/qwen/test.py` and change image name to which ever you want it to direct at
+
 ## Brainstorming session
 Inference:
 ![8AB8CE0A-D751-48FD-8FD2-8DD4A4176684](https://github.com/user-attachments/assets/02822402-1b06-412a-aed6-67df45cd1a94)
