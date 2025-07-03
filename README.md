@@ -28,10 +28,6 @@ Screenshot:
 3. Run `uv run src/model/train.py` to train and evaluate the model (against METEOR)
 4. To run inference - run `uv run streamlit run src/model/inference.py` that will spin up the website, and generate captions based on images being uploaded
 
-### Custom dataset generator
-1. To run `export HF_API_TOKEN=<API KEY>`  and `uv run src/custom-dataset-generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to huggingface
-- Link to dataset: https://huggingface.co/datasets/sugarbot/nutrition-labels-dataset/viewer/default/train?row=2&views%5B%5D=train
-
 ## Brainstorming session
 Inference:
 ![8AB8CE0A-D751-48FD-8FD2-8DD4A4176684](https://github.com/user-attachments/assets/02822402-1b06-412a-aed6-67df45cd1a94)
@@ -84,3 +80,17 @@ _YES. The model maps the information from each image (patch) into a vector space
 2. Create image-caption pairs for all 5 captions for a given image & re-train
 3. Handle non square images, by including rectangle patches? 
 4. Use Qwen text encoder/embedding 
+
+# Task 2 -  QWEN encoder
+
+Aim: To have a custom generated dataset, in our case a nutritional label dataset, and the model will pretend to be a grandma themed nutrionist telling you about sugar content.
+
+## Brainstorming
+![Image of brainstorming whiteboarding](https://github.com/user-attachments/assets/b64590b9-e036-49e2-b717-eebbdddfb7f0)
+
+### Custom dataset generator
+1. To run `export HF_API_TOKEN=<API KEY>`  and `uv run src/custom-dataset-generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to huggingface
+- Link to dataset: https://huggingface.co/datasets/sugarbot/nutrition-labels-dataset/viewer/default/train?row=2&views%5B%5D=train
+
+## To run the model
+1. Run `uv run src/qwen/train.py`
