@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from init_model import Clip, Transformer
 from sweep_config import sweep_configuration
 
-run_type= "sweep_run"  # Change to "sweep" or "train"
+run_type= "sweep"  # Change to "sweep" or "train"
 print("RUNNING TYPE: ", run_type)
 
 default_wandb_config = {
@@ -247,7 +247,7 @@ def train():
     save_artifact('model', 'The trained model for image captioning')
 
 if __name__ == "__main__":
-    if run_type == "sweep_run":
+    if run_type == "sweep":
         sweep_id = wandb.sweep(sweep=sweep_configuration, project="ImageCaptionGenerator")
         wandb.agent(
             sweep_id=sweep_id,
