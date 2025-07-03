@@ -248,7 +248,7 @@ def train():
     torch.save(model.state_dict(), 'data/model.pt')
     save_artifact('model', 'The trained model for image captioning')
 
-if __name__ == "__main__":
-    train()  # Start training the model
+# if __name__ == "__main__":
+#     train()  # Start training the model
 
-    wandb.finish()  # Finish the wandb run
+#     wandb.finish()  # Finish the wandb run

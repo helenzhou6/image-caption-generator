@@ -11,7 +11,7 @@ MODEL_VERSION = 'v6'
 device = get_device()
 
 # Download required data to do METEOR eval (do this once)
-# nltk.download('wordnet')
+nltk.download('wordnet')
 
 # Load model
 model_path = load_model_path(f'model:{MODEL_VERSION}')
