@@ -317,7 +317,6 @@ def train():
         wandb.log({"epoch": epoch + 1, "loss": avg_epoch_loss, "meteor": avg_meteor, f"captions_epoch_{epoch+1}": caption_table})
 
 
-
     torch.save(model.state_dict(), 'data/model.pt')
     save_artifact('model', 'The trained model for image captioning')
 
