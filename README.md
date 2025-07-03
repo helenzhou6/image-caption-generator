@@ -29,8 +29,8 @@ Screenshot:
 4. To run inference - run `uv run streamlit run src/model/inference.py` that will spin up the website, and generate captions based on images being uploaded
 
 ### Custom dataset generator
-1. To run `uv run src/custom-dataset-generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to wandb
-2. To check the output, run `uv run src/custom-dataset-generator/read_output.py`
+1. To run `export HF_API_TOKEN=<API KEY>`  and `uv run src/custom-dataset-generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to huggingface
+- Link to dataset: https://huggingface.co/datasets/sugarbot/nutrition-labels-dataset/viewer/default/train?row=2&views%5B%5D=train
 
 ## Brainstorming session
 Inference:
@@ -84,41 +84,3 @@ _YES. The model maps the information from each image (patch) into a vector space
 2. Create image-caption pairs for all 5 captions for a given image & re-train
 3. Handle non square images, by including rectangle patches? 
 4. Use Qwen text encoder/embedding 
-5. Use BLEU to evaluate generated captions, or use CIDEr
-- Would be good to evalidate the model against CIDEr (good for image captions). 
-        Will need to run `uv run pip install git+https://github.com/salaniz/pycocoevalcap.git` and ensure have `uv run pip install torch nltk numpy`
-        Dummy code:
-        ```python
-        from pycocoevalcap.cider.cider import CIDEr
-        def evaluate_cider(model, dataloader, tokenizer, references):
-            model.eval()
-            hypotheses = {}
-            
-            with torch.no_grad():
-                for batch_idx, batch in enumerate(dataloader):
-                    batch["image"]["pixel_values"] = batch["image"]["pixel_values"].to(device)
-
-                    # Generate captions (greedy decoding example)
-                    outputs = model.generate(batch["image"]["pixel_values"], max_length=30)  # Adapt max_length to your task
-                    captions = [tokenizer.decode(ids, skip_special_tokens=True) for ids in outputs]
-
-                    # Assuming batch has image IDs accessible (or use batch_idx as ID)
-                    for i, caption in enumerate(captions):
-                        img_id = f"val_{batch_idx * dataloader.batch_size + i}"  # or your actual image ID
-                        hypotheses[img_id] = caption
-
-            model.train()
-
-            # Prepare references list for CIDEr
-            refs_list = [references[img_id] for img_id in hypotheses.keys()]
-            hyps_list = [hypotheses[img_id] for img_id in hypotheses.keys()]
-
-            cider_scorer = CIDEr()
-            score, _ = cider_scorer.compute_score(refs_list, hyps_list)
-            return score
-
-        # After your epoch training loop:
-        val_cider_score = evaluate_cider(model, val_dataloader, tokenizer, val_references)
-        print(f"Epoch {epoch + 1} CIDEr score on val set: {val_cider_score:.4f}")
-        wandb.log({"epoch": epoch + 1, "val_cider": val_cider_score})
-        ```
