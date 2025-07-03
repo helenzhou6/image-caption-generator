@@ -7,7 +7,7 @@ from utils import get_device, init_wandb, load_model_path
 import matplotlib.pyplot as plt
 
 # --- CONFIGURATION ---
-MODEL_VERSION = 'v6'
+MODEL_VERSION = 'v9'
 device = get_device()
 
 # --- LOAD MODEL & TOKENIZER --- 
