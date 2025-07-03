@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import os
 from PIL import Image
-from init_model import Transformer, clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS, clip_processor, tokenizer
+from init_model import Transformer, Clip, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS
 from utils import get_device, init_wandb, load_model_path
 import matplotlib.pyplot as plt
 
@@ -13,6 +13,12 @@ device = get_device()
 # --- LOAD MODEL & TOKENIZER --- 
 init_wandb()
 os.makedirs("data", exist_ok=True)
+
+# Load the full CLIP model (image + text encoders)
+clip = Clip()
+clip_model = clip.clip_model
+clip_processor = clip.clip_processor
+tokenizer = clip.tokenizer
 
 model_path = load_model_path(f'model:{MODEL_VERSION}')
 model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
