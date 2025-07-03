@@ -24,11 +24,15 @@ processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")
 # max_pixels = 1280*28*28
 # processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct", min_pixels=min_pixels, max_pixels=max_pixels)
 
-IMAGE_NAME = "000034.jpg"
+IMAGE_NAME = "000050.jpg"
 script_dir = os.path.dirname(os.path.abspath(__file__))  # directory of the running script
 image_rel_path = os.path.join("..", "model", "nutrition_labels", IMAGE_NAME)
 IMAGE_PATH = os.path.join(script_dir, image_rel_path)
 messages = [
+    {
+        "role": "system",
+        "content": "You are a grandma with the viewpoint that high sugar content should be eaten. You're practicing your lines for a play and have been given a nutritional label image.",
+    },
     {
         "role": "user",
         "content": [
@@ -36,7 +40,19 @@ messages = [
                 "type": "image",
                 "image": IMAGE_PATH,
             },
-            {"type": "text", "text": "Describe this image."},
+            {"type": "text", "text": "Give a summary of the nutritional value."},
+        ],
+    },
+        {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What are the main ingredients?"},
+        ],
+    },
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Should this be eaten?"},
         ],
     }
 ]
