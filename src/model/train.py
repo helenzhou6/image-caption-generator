@@ -91,9 +91,8 @@ def collate_fn(batch):
             "input_ids": input_ids,
         }
     }
-
+train_dataset = train_dataset[:100]
 train_dataset = ImageDataset(train_dataset, clip_processor)
-# train_dataset = train_dataset[:100]
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
 class ValDataset(Dataset):
