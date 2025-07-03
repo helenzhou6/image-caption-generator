@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 import wandb
-from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact, load_model_path
+from utils import get_device, load_artifact_path, init_wandb, get_device, save_artifact
 import os
 import nltk
 from nltk.translate.meteor_score import meteor_score
@@ -12,15 +12,15 @@ import torch.nn.functional as F
 from init_model import Clip, Transformer
 
 #  --- CONFIG PARAMS ---
-BATCH_SIZE = 32
-EPOCHS = 10
+BATCH_SIZE = 224
+EPOCHS = 20
 EMBEDDING_DIM = 512
-NUM_HEADS = 8
+NUM_HEADS = 16
 IMAGE_EMBEDDING_DIM = 768
 CAPTION_MAX_SEQ_LEN = 86
-NUM_LAYERS = 2
+NUM_LAYERS = 8
 LEARNING_RATE = 1e-3
-MODEL_VERSION = 'v9'
+NUM_WORKERS = 4
 
 padding_token_id = 49405  # Our defined <|padding|> token ID
 end_token_id = 49407  # CLIP’s <|endoftext|> token ID
@@ -50,13 +50,9 @@ clip_processor = clip.clip_processor
 tokenizer = clip.tokenizer
 
 # Initialize the model with CLIP encoder and custom decoder
-model_path = load_model_path(f'model:{MODEL_VERSION}')
 model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
-model.load_state_dict(torch.load(model_path, map_location=device))
-
 
 # --- Set up Dataloaders for training and evaluation ---
-
 class ImageDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
         self.image_caption_pairs = image_caption_pairs
