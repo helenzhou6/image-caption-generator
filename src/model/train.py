@@ -13,13 +13,14 @@ from init_model import Clip, Transformer
 
 #  --- CONFIG PARAMS ---
 BATCH_SIZE = 224
-EPOCHS = 20
+EPOCHS = 10
 EMBEDDING_DIM = 512
 NUM_HEADS = 16
 IMAGE_EMBEDDING_DIM = 768
 CAPTION_MAX_SEQ_LEN = 86
 NUM_LAYERS = 8
 LEARNING_RATE = 1e-3
+# TODO: Currently below not working - had an error with cuda
 NUM_WORKERS = 4
 
 padding_token_id = 49405  # Our defined <|padding|> token ID
@@ -93,7 +94,7 @@ def collate_fn(batch):
     }
 
 train_dataset = ImageDataset(train_dataset, clip_processor)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn, num_workers=NUM_WORKERS)
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
 class ValDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):
@@ -116,7 +117,7 @@ class ValDataset(Dataset):
 
 val_dataset = ValDataset(val_dataset, clip_processor)
 val_subset = torch.utils.data.Subset(val_dataset, range(0, 20))
-val_loader = DataLoader(val_subset, batch_size=1, shuffle=False, num_workers=NUM_WORKERS)
+val_loader = DataLoader(val_subset, batch_size=1, shuffle=False)
 
 # --- Meteor calculation ---
 def compute_meteor(model, val_loader, tokenizer, device, max_len=256):
