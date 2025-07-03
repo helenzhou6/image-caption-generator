@@ -20,7 +20,7 @@ default_wandb_config = {
     "EMBEDDING_DIM": 512,
     "NUM_LAYERS": 8
 }
-wandb.init(project="ImageCaptionGenerator", config=default_wandb_config)
+wandb.init(project="ImageCaptionGenerator", entity="bunch-image-caption-generator", config=default_wandb_config)
 config = wandb.config
 
 #  --- CONFIG PARAMS ---
