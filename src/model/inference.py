@@ -1,25 +1,23 @@
 import torch
 import torch.nn.functional as F
-import transformers
+import os
 from PIL import Image
-from encoder_with_val import Transformer, clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS, clip_processor
-from utils import get_device
+from init_model import Transformer, clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS, clip_processor, tokenizer
+from utils import get_device, init_wandb, load_model_path
 import matplotlib.pyplot as plt
 
 # --- CONFIGURATION ---
-#MODEL_VERSION = 'v6'
+MODEL_VERSION = 'v6'
 device = get_device()
 
 # --- LOAD MODEL & TOKENIZER --- 
-model_path = "data/model.pt"
+init_wandb()
+os.makedirs("data", exist_ok=True)
 
-model = Transformer(
-    clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS
-).to(device)
+model_path = load_model_path(f'model:{MODEL_VERSION}')
+model = Transformer(clip_model, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDDING_DIM, NUM_LAYERS).to(device)
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
-
-tokenizer = clip_processor.tokenizer
 
 def generate_caption(image, model, tokenizer, device):
     """
