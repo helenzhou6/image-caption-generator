@@ -12,13 +12,13 @@ import torch.nn.functional as F
 from init_model import Clip, Transformer
 from sweep_config import sweep_configuration
 
-run_type= "sweep"  # Change to "sweep" or "train"
+run_type= "train"  # Change to "sweep" or "train"
 print("RUNNING TYPE: ", run_type)
 
 default_wandb_config = {
-    "NUM_HEADS": 16,
+    "NUM_HEADS": 4,
     "EMBEDDING_DIM": 512,
-    "NUM_LAYERS": 8
+    "NUM_LAYERS": 4
 }
 wandb.init(project="ImageCaptionGenerator", entity="bunch-image-caption-generator", config=default_wandb_config)
 config = wandb.config
@@ -31,8 +31,8 @@ NUM_LAYERS = config.NUM_LAYERS
 NUM_HEADS = config.NUM_HEADS
 IMAGE_EMBEDDING_DIM = 768
 
-BATCH_SIZE = 224
-EPOCHS = 10
+BATCH_SIZE = 64
+EPOCHS = 24
 CAPTION_MAX_SEQ_LEN = 86
 LEARNING_RATE = 1e-3
 
@@ -112,7 +112,7 @@ def collate_fn(batch):
     }
 
 train_dataset = ImageDataset(train_dataset, clip_processor)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn, num_workers=NUM_WORKERS)
 
 class ValDataset(Dataset):
     def __init__(self, image_caption_pairs, processor):

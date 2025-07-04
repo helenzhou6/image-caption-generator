@@ -8,7 +8,7 @@ from init_model import Transformer, Clip, EMBEDDING_DIM, NUM_HEADS, IMAGE_EMBEDD
 from utils import get_device, init_wandb, load_model_path
 
 # --- CONFIGURATION --- Needs to match the training config
-MODEL_VERSION = 'v10'
+MODEL_VERSION = 'v12'
 EMBEDDING_DIM = 512
 NUM_HEADS = 8
 IMAGE_EMBEDDING_DIM = 768
