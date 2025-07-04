@@ -14,7 +14,16 @@ model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
 )
 processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct")
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+def get_device():
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = "mps"
+    print(f"Using device: {device}")
+    return device
+
+device = get_device()
 model.to(device)
 
 # Directory containing images
