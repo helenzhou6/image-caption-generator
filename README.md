@@ -86,6 +86,9 @@ _YES. The model maps the information from each image (patch) into a vector space
 Aim: Have a custom generated dataset, in our case a nutritional label dataset. Using pre-trained Qwen model, with system prompts that will have the model pretend to be a grandma that is working for a confectionary company and trying to persuade you to eat sugary foods.
 - Side note: luckily we weren't able to turn the model 'bad', it always recommended not having high sugar content!
 
+Evidence of it struggling to be bad:
+![Evidence of it struggling to be bad](https://github.com/user-attachments/assets/024b93f8-d451-43b0-a214-6d284c9dd7ba)
+
 ## Brainstorming
 ![Image of brainstorming whiteboarding](https://github.com/user-attachments/assets/b64590b9-e036-49e2-b717-eebbdddfb7f0)
 
