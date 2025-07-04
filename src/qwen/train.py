@@ -124,7 +124,6 @@ class QwenImageCaptionModel(nn.Module):
 model = QwenImageCaptionModel().to(device)
 
 # --- METEOR EVAL ---
-# --- METEOR EVAL ---
 def compute_meteor(model, dataloader):
     model.eval()
     total = []
@@ -197,7 +196,7 @@ def train():
         print(f"Epoch {epoch+1} — Loss: {avg_loss:.4f}, METEOR: {meteor:.4f}")
         wandb.log({"epoch": epoch + 1, "loss": avg_loss, "meteor": meteor})
 
-    torch.save(model.state_dict(), "qwenmodel.pt")
+    torch.save(model.state_dict(), "data/qwenmodel.pt")
     save_artifact("qwenmodel", "Trained captioning qwen model")
 
 # --- MAIN ---
