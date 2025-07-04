@@ -79,6 +79,7 @@ def get_image_bytes(image: Image.Image):
     return buffer.getvalue()
 
 # --- STREAMLIT UI ---
+st.image("qwenpic.png", use_column_width=True)
 st.title("👵 Qwen the Nutrionistist Recommends")
 
 uploaded_files = st.file_uploader(
