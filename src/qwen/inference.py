@@ -11,7 +11,7 @@ from utils import get_device, init_wandb, load_model_path
 # Constants
 MODEL_VERSION = 'latest'
 CAPTION_MAX_SEQ_LEN = 86
-end_token_id = 49407
+end_token_id = 151643
 device = get_device()
 
 # --- LOAD MODEL & TOKENIZER ---

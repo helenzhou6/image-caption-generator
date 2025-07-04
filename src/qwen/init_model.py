@@ -20,7 +20,7 @@ class QwenImageCaptionModel(torch.nn.Module):
         self.qwen_tokenizer = qwen_tokenizer
         self.qwen = AutoModelForCausalLM.from_pretrained(qwen_name, trust_remote_code=True).to(device)
         hidden = self.qwen.config.hidden_size
-        self.img_proj = nn.Linear(IMAGE_EMBEDDING_DIM, hidden)
+        self.img_proj = torch.nn.Linear(IMAGE_EMBEDDING_DIM, hidden)
 
     def forward(self, batch):
         imgs = batch["image"]["pixel_values"]
