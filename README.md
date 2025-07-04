@@ -55,7 +55,7 @@ Inference:
 6. Output logits: use the Cross Entropy loss function to train the base model (compare it to the caption that has gone through vec2word) ✅
 7. Evaluation - using validation dataset ✅
     - Nice to have: during training, will output some text! ✅
-8. Sweeps
+8. Sweeps (we have the code but couldn't run it due to GPU limitations)
 9. Inference ✅
 
 
@@ -76,10 +76,10 @@ _YES. The model maps the information from each image (patch) into a vector space
 8. So what is the Decoder learning? What are the weights and biases really representing? i.e what is it learning, and what do we backpropogate it to train it to be more accurate.  
 
 ### Bonus 
-1. Try pooling 5 captions for embeddings and test against single embedded caption
+1. ✅ Try pooling 5 captions for embeddings and test against single embedded caption
 2. Create image-caption pairs for all 5 captions for a given image & re-train
 3. Handle non square images, by including rectangle patches? 
-4. Use Qwen text encoder/embedding 
+4. ✅ Use Qwen text encoder/embedding 
 
 # Task 2 -  QWEN encoder
 

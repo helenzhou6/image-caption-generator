@@ -79,7 +79,7 @@ def get_image_bytes(image: Image.Image):
     return buffer.getvalue()
 
 # --- STREAMLIT UI ---
-st.title("Nutrionistist Recommends")
+st.title("👵 Qwen the Nutrionistist Recommends")
 
 uploaded_files = st.file_uploader(
     "Choose nutrition label files", 
