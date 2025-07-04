@@ -83,14 +83,17 @@ _YES. The model maps the information from each image (patch) into a vector space
 
 # Task 2 -  QWEN encoder
 
-Aim: To have a custom generated dataset, in our case a nutritional label dataset, and the model will pretend to be a grandma themed nutrionist telling you about sugar content.
+Aim: Have a custom generated dataset, in our case a nutritional label dataset. Using pre-trained Qwen model, with system prompts that will have the model pretend to be a grandma that is working for a confectionary company and trying to persuade you to eat sugary foods.
+- Side note: luckily we weren't able to turn the model 'bad', it always recommended not having high sugar content!
 
 ## Brainstorming
 ![Image of brainstorming whiteboarding](https://github.com/user-attachments/assets/b64590b9-e036-49e2-b717-eebbdddfb7f0)
 
+## To run
 ### Custom dataset generator
 1. To run `export HF_API_TOKEN=<API KEY>`  and `uv run src/custom-dataset-generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to huggingface
 - Link to dataset: https://huggingface.co/datasets/sugarbot/nutrition-labels-dataset/viewer/default/train?row=2&views%5B%5D=train
 
 ## To run the model
 1. Run `uv run src/qwen/train.py`
+2. To run the inference: `uv run streamlit run src/qwen/inference.py`
