@@ -94,7 +94,10 @@ Evidence of it struggling to be bad:
 
 ## To run
 ### Custom dataset generator
-1. To run `export HF_API_TOKEN=<API KEY>`  and `uv run src/custom-dataset-generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to huggingface
+1. Run `uv run src/label_generator/nutri_dataset.py` to grab datasets from Google
+2. Run `uv run src/label_generator/augmentations.py` to augment the images (make it black and white etc, rotate etc)
+    - label_generator.py looks like it might generate the labels?
+3. To run `export HF_API_TOKEN=<API KEY>`  and `uv run src/label_generator/generate_captions.py` that will take all the images in nutrition labels, and then generate captions for it and save to huggingface
 - Link to dataset: https://huggingface.co/datasets/sugarbot/nutrition-labels-dataset/viewer/default/train?row=2&views%5B%5D=train
 
 ## To run the model
