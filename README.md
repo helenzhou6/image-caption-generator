@@ -1,4 +1,4 @@
-# Image Caption Generator
+# Task 1: Image Caption Generator
 Aim: To take an image and generate a caption with **magic** (a.k.a a CLIP Visual Encoder + Custom Decoder)
 MLX week 4.
 
