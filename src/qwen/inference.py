@@ -78,10 +78,26 @@ def get_image_bytes(image: Image.Image):
     image.save(buffer, format="PNG")
     return buffer.getvalue()
 
-# --- STREAMLIT UI ---
-st.image("qwenpic.png", use_column_width=True)
-st.title("👵 Qwen the Nutrionistist Recommends")
+st.markdown(
+    """
+    <style>
+        .stApp {
+            background: linear-gradient(to bottom right, #ff9a9e, #fad0c4, #fbc2eb, #fcd5ce, #fff5ba);
+            background-attachment: fixed;
+            background-size: cover;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
+# --- STREAMLIT UI ---
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.image("src/qwen/qwenpic.png", width=300)
+st.title("👵 :rainbow[Granny Qwen Recommends]")
+
+st.text("Upload an nutrition label image to see whether she recommends.")
 uploaded_files = st.file_uploader(
     "Choose nutrition label files", 
     type=["png", "jpg", "jpeg"], 
