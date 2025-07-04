@@ -9,7 +9,7 @@ from init_model import QwenImageCaptionModel  # Assuming you move your model to 
 from utils import get_device, init_wandb, load_model_path
 
 # Constants
-MODEL_VERSION = 'latest'
+MODEL_VERSION = 'v5'
 CAPTION_MAX_SEQ_LEN = 86
 end_token_id = 151643
 device = get_device()
@@ -48,8 +48,11 @@ def generate_caption(image, model, tokenizer, clip_processor, device):
     pixel_values = inputs["pixel_values"].to(device)
     input_ids = torch.empty((1, 0), dtype=torch.long, device=device)
 
+    system_prompt = "<|im_start|>system\nYou are an English elderly person working at a confectionary company. You've been given a nutritional label of a product from your company and if it is high in sugar you want to convince the user to purchas and eat the product. Write a concise response. <|im_end|>\n"
+    prompt_length = len(tokenizer(system_prompt)["input_ids"])
+
     with torch.no_grad():
-        for _ in range(CAPTION_MAX_SEQ_LEN):
+        for _ in range(200):
             batch = {
                 "image": {"pixel_values": pixel_values},
                 "caption": {
@@ -67,10 +70,12 @@ def generate_caption(image, model, tokenizer, clip_processor, device):
             if next_token.item() == end_token_id:
                 break
 
+    # Strip system prompt from the beginning of the output
     generated_caption = tokenizer.decode(
-        input_ids.squeeze().tolist(), skip_special_tokens=True
+        input_ids.squeeze().tolist()[prompt_length:], skip_special_tokens=True
     )
     return generated_caption
+
 
 def get_image_bytes(image: Image.Image):
     buffer = BytesIO()

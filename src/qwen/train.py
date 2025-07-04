@@ -15,7 +15,7 @@ from init_model import QwenImageCaptionModel, qwen_tokenizer, processor
 
 mp.set_start_method("spawn", force=True)
 
-HF_DATASET_NAME = "sugarbot/nutrition-labels-dataset"
+HF_DATASET_NAME = "benji-benji/mlx_nutritional_labels"
 os.makedirs("data", exist_ok=True)
 
 # Hyperparameters
@@ -56,7 +56,7 @@ class HFDataset(Dataset):
     def __getitem__(self, idx):
         item = self.ds[idx]
         image = item["image"]
-        caption = item["should_eat"]
+        caption = item["summary"]
 
         processed_image = self.processor(images=image, return_tensors="pt")
 
