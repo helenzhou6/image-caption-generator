@@ -23,13 +23,13 @@ NUM_LAYERS = 2
 NUM_HEADS = 2
 IMAGE_EMBEDDING_DIM = 768
 BATCH_SIZE = 2
-EPOCHS = 1
-CAPTION_MAX_SEQ_LEN = 86
+EPOCHS = 2
+CAPTION_MAX_SEQ_LEN = 256
 LEARNING_RATE = 1e-4
 
 # Tokens
-padding_token_id = 49405  # your custom padding
-end_token_id = 49407
+padding_token_id = 151643  # EOS
+end_token_id = 151643
 
 device = get_device()
 nltk.download('wordnet')
@@ -41,6 +41,11 @@ dataset = load_dataset(HF_DATASET_NAME, split="train")  # update with real datas
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 qwen_name = "Qwen/Qwen3-0.6B-Base"
 qwen_tokenizer = AutoTokenizer.from_pretrained(qwen_name, trust_remote_code=True)
+
+system_prompt = "<|im_start|>system\nYou are an English elderly person working at a confectionary company. You've been given a nutritional label of a product from your company and if it is high in sugar you want to convince the user to purchas and eat the product. Write a concise response. <|im_end|>\n"
+prompt = system_prompt
+prompt_length = int(len(qwen_tokenizer(prompt)["input_ids"]))
+
 
 class HFDataset(Dataset):
     def __init__(self, hf_ds, processor, tokenizer, max_len=CAPTION_MAX_SEQ_LEN):
@@ -58,16 +63,47 @@ class HFDataset(Dataset):
         caption = item["should_eat"]
 
         processed_image = self.processor(images=image, return_tensors="pt")
+
+        # Now concatenate system prompt with the caption as your training text
+        # (the target to generate is still just the caption, but the model gets the system prompt as prefix/context)
+        tokenized_prompt = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            # truncation=True,
+            # max_length=self.max_len,
+            # padding="max_length"
+        )
+
         tokenized_caption = self.tokenizer(
             caption,
             return_tensors="pt",
-            truncation=True,
-            max_length=self.max_len,
-            padding="max_length"
+            # truncation=True,
+            # max_length=self.max_len,
+            # padding="max_length"
         )
+
+        # Get tensors
+        prompt_ids = tokenized_prompt["input_ids"].squeeze(0)   # (L1,)
+        caption_ids = tokenized_caption["input_ids"].squeeze(0) # (L2,)
+
+        # Concatenate
+        input_ids = torch.cat([prompt_ids, caption_ids], dim=0)    # (L1 + L2,)
+        # Truncate to max_len if needed
+        input_ids = input_ids[:self.max_len]
+
+        # Pad if needed
+        if input_ids.size(0) < self.max_len:
+            pad_len = self.max_len - input_ids.size(0)
+            input_ids = torch.cat([input_ids, torch.full((pad_len,), padding_token_id, dtype=torch.long)], dim=0)
+
+        attention_mask = (input_ids != padding_token_id).long()
+
         return {
             "image": processed_image,
-            "caption": tokenized_caption
+            "caption": {
+                "input_ids": input_ids.unsqueeze(0),      # (1, max_len)
+                "attention_mask": attention_mask.unsqueeze(0)  # (1, max_len)
+            }
         }
 
 def collate_fn(batch):
@@ -148,8 +184,8 @@ def compute_meteor(model, dataloader):
                 if next_token.item() == end_token_id:
                     break
 
-            gen_ids = input_ids[0].tolist()
-            ref_ids = batch["caption"]["input_ids"][0].tolist()
+            gen_ids = input_ids[0][prompt_length:].tolist()
+            ref_ids = batch["caption"]["input_ids"][0][prompt_length:].tolist()
 
             gen_text = qwen_tokenizer.decode(gen_ids, skip_special_tokens=True)
             ref_text = qwen_tokenizer.decode(ref_ids, skip_special_tokens=True)
@@ -161,11 +197,11 @@ def compute_meteor(model, dataloader):
                 print(f"Reference: {ref_text}")
                 first_logged = True
 
-            gen_tokens = gen_text.split()
-            ref_tokens = ref_text.split()
-            total.append(meteor_score([ref_tokens], gen_tokens))
+            # gen_tokens = gen_text.split()
+            # ref_tokens = ref_text.split()
+            # total.append(meteor_score([ref_tokens], gen_tokens))
 
-    return sum(total) / len(total) if total else 0.0
+    return 0
 
 # --- TRAIN LOOP ---
 def train():
