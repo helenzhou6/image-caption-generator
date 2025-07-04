@@ -15,6 +15,7 @@ import torch.multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
 HF_DATASET_NAME = "sugarbot/nutrition-labels-dataset"
+os.makedirs("data", exist_ok=True)
 
 # Hyperparameters
 EMBEDDING_DIM = 512
@@ -115,32 +116,57 @@ class QwenImageCaptionModel(nn.Module):
 
         outputs = self.qwen(inputs_embeds=merged, attention_mask=new_attention, return_dict=True)
         # logits shape: (B, 1+T, V); skip prefix
-        return outputs.logits[:, 1:, :]
+        if merged.size(1) > 1:
+            return outputs.logits[:, 1:, :]
+        else:
+            return outputs.logits
 
 model = QwenImageCaptionModel().to(device)
 
 # --- METEOR EVAL ---
+# --- METEOR EVAL ---
 def compute_meteor(model, dataloader):
     model.eval()
     total = []
+    first_logged = False
+
     for batch in dataloader:
         with torch.no_grad():
             input_ids = torch.empty((1, 0), dtype=torch.long, device=device)
+
             for _ in range(CAPTION_MAX_SEQ_LEN):
                 batch2 = {
                     "image": {"pixel_values": batch["image"]["pixel_values"]},
                     "caption": {"input_ids": input_ids, "attention_mask": torch.ones_like(input_ids)}
                 }
                 logits = model(batch2)
+                
+                if logits.size(1) == 0:
+                    break  # skip if logits are empty
+                
                 next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
                 input_ids = torch.cat([input_ids, next_token], dim=1)
                 if next_token.item() == end_token_id:
                     break
-            gen = qwen_tokenizer.decode(input_ids[0].tolist(), skip_special_tokens=True).split()
-            refs = [batch["caption"]["input_ids"]]  # need tokenized ref captions
-            ref_text = qwen_tokenizer.decode(refs[0][0].tolist(), skip_special_tokens=True).split()
-            total.append(meteor_score([ref_text], gen))
-    return sum(total) / len(total)
+
+            gen_ids = input_ids[0].tolist()
+            ref_ids = batch["caption"]["input_ids"][0].tolist()
+
+            gen_text = qwen_tokenizer.decode(gen_ids, skip_special_tokens=True)
+            ref_text = qwen_tokenizer.decode(ref_ids, skip_special_tokens=True)
+
+            # Log the first example only
+            if not first_logged:
+                print("\n🔹 FIRST BATCH EXAMPLE:")
+                print(f"Generated: {gen_text}")
+                print(f"Reference: {ref_text}")
+                first_logged = True
+
+            gen_tokens = gen_text.split()
+            ref_tokens = ref_text.split()
+            total.append(meteor_score([ref_tokens], gen_tokens))
+
+    return sum(total) / len(total) if total else 0.0
 
 # --- TRAIN LOOP ---
 def train():
