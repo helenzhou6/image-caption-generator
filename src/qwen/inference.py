@@ -85,6 +85,7 @@ st.markdown(
             background: linear-gradient(to bottom right, #ff9a9e, #fad0c4, #fbc2eb, #fcd5ce, #fff5ba);
             background-attachment: fixed;
             background-size: cover;
+            color: black;
         }
     </style>
     """,
