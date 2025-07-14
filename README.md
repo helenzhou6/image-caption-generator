@@ -103,3 +103,7 @@ Evidence of it struggling to be bad:
 ## To run the model
 1. Run `uv run src/qwen/train.py`
 2. To run the inference: `uv run streamlit run src/qwen/inference.py`
+
+## Evidence of it (sort of) working
+<img width="663" height="380" alt="Screenshot 2025-07-07 at 09 54 12" src="https://github.com/user-attachments/assets/ce94c24a-ec03-49eb-9369-34dc2e6e52ae" />
+<img width="766" height="432" alt="Screenshot 2025-07-07 at 09 54 31" src="https://github.com/user-attachments/assets/6b4b6df8-b884-4034-9311-3244b00c06d9" />
